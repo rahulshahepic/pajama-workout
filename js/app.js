@@ -712,7 +712,9 @@
       var redirect = await SyncManager.handleRedirect();
       updateSyncUI();
       if (redirect && redirect.wasRedirect && !redirect.ok) {
-        els.syncStatus.textContent = "Sign-in failed \u00B7 " + (redirect.error || "unknown");
+        var msg = redirect.error || "unknown";
+        if (redirect.detail) msg += " \u00B7 " + redirect.detail.slice(0, 200);
+        els.syncStatus.textContent = "Sign-in failed \u00B7 " + msg;
         els.syncStatus.style.display = "block";
       } else if ((redirect && redirect.ok) || SyncManager.isSignedIn()) {
         syncAndUpdateUI();
