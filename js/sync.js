@@ -106,7 +106,7 @@ const SyncManager = (function () {
   async function signIn() {
     const verifier  = generateVerifier();
     const challenge = await computeChallenge(verifier);
-    sessionStorage.setItem(VERIFIER_KEY, verifier);
+    localStorage.setItem(VERIFIER_KEY, verifier);
 
     const params = new URLSearchParams({
       client_id:             GOOGLE_CLIENT_ID,
@@ -139,8 +139,8 @@ const SyncManager = (function () {
     const code = params.get("code");
     if (!code) return { wasRedirect: false, ok: false };
 
-    const verifier = sessionStorage.getItem(VERIFIER_KEY);
-    sessionStorage.removeItem(VERIFIER_KEY);
+    const verifier = localStorage.getItem(VERIFIER_KEY);
+    localStorage.removeItem(VERIFIER_KEY);
     if (!verifier) {
       cleanUrl();
       return { wasRedirect: true, ok: false, error: "missing_verifier" };
