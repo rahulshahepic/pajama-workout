@@ -324,6 +324,7 @@
     clearInterval(interval);
     els.pickerScreen.classList.add("active");
     els.timerScreen.classList.remove("active");
+    els.historyScreen.classList.remove("active");
 
     // reset body to default look
     document.body.style.background = "#1a2332";
