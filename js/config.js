@@ -9,12 +9,13 @@
  *   "work"    — active exercise  (teal accent)
  *   "rest"    — rest period      (purple accent)
  *   "stretch" — stretch / cool-down (green accent)
+ *   "yoga"    — yoga pose / flow  (warm amber accent)
  *
  * Each phase: { name, type, duration (seconds), hint }
  */
 
 /** Bump this when any cached asset changes.  SW uses it for cache-busting. */
-const APP_VERSION = 25;
+const APP_VERSION = 26;
 
 /** Google OAuth — public identifier, not a secret.  Change if you fork. */
 const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
@@ -156,6 +157,54 @@ const WORKOUTS = {
     ],
   },
 
+  /* ── Morning Flow — sun salutation yoga ────────────────────── */
+  "morning-flow": {
+    id: "morning-flow",
+    title: "Morning Flow",
+    subtitle: "~10 min sun salutation + standing poses",
+    description: "Wake up your body with a gentle vinyasa-inspired flow. No equipment needed.",
+    phases: [
+      { name: "Mountain Pose",          type: "yoga", duration: 20, hint: "Stand tall, feet together, arms at sides. Ground through all four corners of your feet. Lift your chest, soften your shoulders, and breathe." },
+      { name: "Forward Fold",           type: "yoga", duration: 25, hint: "Hinge at the hips, let your head hang heavy. Bend your knees as much as you need to. Grab opposite elbows and sway gently." },
+      { name: "Halfway Lift",           type: "yoga", duration: 15, hint: "Hands to shins, flatten your back parallel to the floor. Gaze forward, lengthen your spine. This is your reset between folds." },
+      { name: "Low Lunge — R",          type: "yoga", duration: 30, hint: "Step your right foot back into a low lunge, left knee over ankle. Sink your hips and reach your arms overhead. Breathe into the hip flexor." },
+      { name: "Downward Dog",           type: "yoga", duration: 30, hint: "Press back, hands shoulder-width, feet hip-width. Push your hips up and back. Pedal your heels. Let your head hang between your arms." },
+      { name: "Low Lunge — L",          type: "yoga", duration: 30, hint: "Step your left foot back, right foot forward. Sink your hips, arms overhead. Keep your front knee tracking over your ankle." },
+      { name: "Downward Dog",           type: "yoga", duration: 25, hint: "Press back again. Spread your fingers wide, press through the knuckles. Find length in your spine — it's okay if heels don't touch." },
+      { name: "Warrior I — R",          type: "yoga", duration: 30, hint: "Step your right foot forward, back foot angled 45\u00B0. Bend the front knee, arms overhead. Square your hips forward and lift your chest." },
+      { name: "Warrior II — R",         type: "yoga", duration: 30, hint: "Open your hips and arms to the side. Front knee stays bent, gaze over your front fingertips. Strong legs, relaxed shoulders." },
+      { name: "Downward Dog",           type: "yoga", duration: 20, hint: "Flow back through plank and lower to down dog. Take three slow breaths here." },
+      { name: "Warrior I — L",          type: "yoga", duration: 30, hint: "Step left foot forward. Back foot angled, hips squared, arms reaching up. Ground through your back foot." },
+      { name: "Warrior II — L",         type: "yoga", duration: 30, hint: "Open to the side. Front knee bent, arms wide. Settle into the pose — find ease in the effort." },
+      { name: "Downward Dog",           type: "yoga", duration: 20, hint: "Last down dog. Breathe deeply, let your neck release completely." },
+      { name: "Forward Fold",           type: "yoga", duration: 20, hint: "Walk your feet to your hands. Fold over your legs. Shake your head yes and no to release the neck." },
+      { name: "Mountain Pose",          type: "yoga", duration: 20, hint: "Roll up slowly, one vertebra at a time. Stand tall. Close your eyes. Notice how your body feels. You showed up." },
+    ],
+  },
+
+  /* ── Wind-Down Yoga — evening relaxation ────────────────────── */
+  "wind-down-yoga": {
+    id: "wind-down-yoga",
+    title: "Wind-Down Yoga",
+    subtitle: "~12 min gentle floor poses for sleep",
+    description: "Slow, restorative poses to calm your nervous system before bed. All on the floor.",
+    phases: [
+      { name: "Seated Breathing",       type: "yoga", duration: 30, hint: "Sit cross-legged, hands on knees. Close your eyes. Inhale for 4 counts, hold for 2, exhale for 6. Repeat. Let your day dissolve." },
+      { name: "Seated Side Bend — L",   type: "yoga", duration: 25, hint: "Left hand down, right arm overhead. Lean left, opening the right side body. Keep both sit bones grounded." },
+      { name: "Seated Side Bend — R",   type: "yoga", duration: 25, hint: "Switch sides. Right hand down, left arm over. Breathe into the stretch along your left ribs." },
+      { name: "Cat-Cow",                type: "yoga", duration: 30, hint: "Come to all fours. Inhale, drop your belly and lift your gaze (cow). Exhale, round your spine and tuck your chin (cat). Move with your breath." },
+      { name: "Thread the Needle — L",  type: "yoga", duration: 30, hint: "From all fours, slide your left arm under your right. Rest your left shoulder and temple on the floor. Breathe into the twist." },
+      { name: "Thread the Needle — R",  type: "yoga", duration: 30, hint: "Switch sides. Slide right arm under left. Let your chest rotate open. Don't force it — gravity is your friend." },
+      { name: "Child's Pose",           type: "yoga", duration: 40, hint: "Knees wide, big toes together. Walk your hands forward, forehead down. This is your home base. Breathe slowly and deeply." },
+      { name: "Supine Twist — L",       type: "yoga", duration: 35, hint: "Lie on your back, hug knees in, then drop them to the left. Arms wide, look right. Let your lower back unwind." },
+      { name: "Supine Twist — R",       type: "yoga", duration: 35, hint: "Bring knees back to center, then drop to the right. Look left. Breathe and release." },
+      { name: "Happy Baby",             type: "yoga", duration: 30, hint: "Grab the outside edges of your feet, knees wide toward armpits. Rock gently side to side. Release your lower back." },
+      { name: "Reclined Butterfly",     type: "yoga", duration: 40, hint: "Soles of feet together, knees falling open. Arms at your sides, palms up. Close your eyes. This opens hips and calms the mind." },
+      { name: "Legs Up the Wall",       type: "yoga", duration: 45, hint: "Scoot your hips to a wall, swing your legs up. Arms relaxed at sides. This reverses blood flow and deeply relaxes. Stay here and breathe." },
+      { name: "Savasana",               type: "yoga", duration: 60, hint: "Lie flat, arms at sides, palms up. Close your eyes. Let every muscle release completely. You showed up. Now rest." },
+    ],
+  },
+
   /* ── Quick 5 min — no stretches ─────────────────────────────── */
   "quick-five": {
     id: "quick-five",
@@ -193,6 +242,7 @@ const THEME = {
   work:      { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
   rest:      { bg: "#1a1a2e", accent: "#6C63FF", glow: "rgba(108,99,255,0.2)",   progress: "#8B85FF" },
   stretch:   { bg: "#1a2118", accent: "#A8D08D", glow: "rgba(168,208,141,0.15)", progress: "#A8D08D" },
+  yoga:      { bg: "#2a1a0e", accent: "#E8A44A", glow: "rgba(232,164,74,0.2)",   progress: "#E8A44A" },
   countdown: { bg: "#1a2332", accent: "rgba(255,255,255,0.6)", glow: "rgba(255,255,255,0.08)", progress: "rgba(255,255,255,0.2)" },
   idle:      { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
 };

@@ -101,16 +101,18 @@
   }
 
   function summarise(phasesArr, mult) {
-    let workCount = 0, stretchCount = 0, total = 0;
+    let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
     var m = mult || 1;
     for (const p of phasesArr) {
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
+      if (p.type === "yoga") yogaCount++;
       total += Math.round(p.duration * m);
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
-    if (workCount)   parts.push(`${workCount} exercises`);
+    if (workCount)    parts.push(`${workCount} exercises`);
+    if (yogaCount)    parts.push(`${yogaCount} poses`);
     if (stretchCount) parts.push(`${stretchCount} stretches`);
     return parts.join(" \u00B7 ");
   }
@@ -202,11 +204,17 @@
   function sectionFor(idx) {
     const p = phases[idx];
     if (p.type === "stretch") return "Stretches";
+    if (p.type === "yoga") return "Yoga";
     return "Workout";
   }
 
   function counterFor(idx) {
     const p = phases[idx];
+    if (p.type === "yoga") {
+      const yogaPhases = phases.filter(x => x.type === "yoga");
+      const num = yogaPhases.indexOf(p) + 1;
+      return `Pose ${num} of ${yogaPhases.length}`;
+    }
     if (p.type === "work" || p.type === "rest") {
       const workPhases = phases.filter(x => x.type === "work");
       const exNum = Math.floor(idx / 2) + 1;

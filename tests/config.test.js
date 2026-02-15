@@ -10,7 +10,7 @@ const assert = require("node:assert/strict");
 
 const { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME } = require("../js/config.js");
 
-const VALID_TYPES = new Set(["work", "rest", "stretch"]);
+const VALID_TYPES = new Set(["work", "rest", "stretch", "yoga"]);
 
 describe("APP_VERSION", () => {
   it("is a positive integer", () => {
