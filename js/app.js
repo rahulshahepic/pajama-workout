@@ -679,8 +679,19 @@
   async function init() {
     cacheDOM();
 
-    // Wire buttons (must happen synchronously — never after an await
-    // that could throw and abort init)
+    // ── Show UI first (must never fail) ──────────────────────
+    // Seed the initial history entry so there's something to go "back" to
+    history.replaceState({ screen: "picker" }, "");
+
+    // If only one workout, skip picker and go straight to it
+    var workoutKeys = Object.keys(WORKOUTS);
+    if (workoutKeys.length === 1) {
+      selectWorkout(workoutKeys[0]);
+    } else {
+      showPicker(false);
+    }
+
+    // ── Wire buttons ─────────────────────────────────────────
     els.btnStart.addEventListener("click", start);
     els.btnPause.addEventListener("click", pause);
     els.btnResume.addEventListener("click", resume);
@@ -689,32 +700,21 @@
     els.btnHome.addEventListener("click", goHome);
     els.btnHistory.addEventListener("click", showHistory);
     els.btnHistoryBack.addEventListener("click", hideHistory);
-    els.btnClearHistory.addEventListener("click", () => {
+    els.btnClearHistory.addEventListener("click", function () {
       WorkoutHistory.clear();
       renderHistory();
     });
     els.btnSync.addEventListener("click", handleSyncButton);
     els.syncStatus.addEventListener("click", handleSyncStatusTap);
 
-    // Seed the initial history entry so there's something to go "back" to
-    history.replaceState({ screen: "picker" }, "");
-
-    // If only one workout, skip picker and go straight to it
-    const workoutKeys = Object.keys(WORKOUTS);
-    if (workoutKeys.length === 1) {
-      selectWorkout(workoutKeys[0]);
-    } else {
-      showPicker(false);
-    }
-
-    // Sync setup (wrapped in try/catch — sync issues must never break the app)
+    // ── Sync setup (must never break the app) ────────────────
     try {
       var redirect = await SyncManager.handleRedirect();
       updateSyncUI();
-      if (redirect.wasRedirect && !redirect.ok) {
+      if (redirect && redirect.wasRedirect && !redirect.ok) {
         els.syncStatus.textContent = "Sign-in failed \u00B7 " + (redirect.error || "unknown");
         els.syncStatus.style.display = "block";
-      } else if (redirect.ok || SyncManager.isSignedIn()) {
+      } else if ((redirect && redirect.ok) || SyncManager.isSignedIn()) {
         syncAndUpdateUI();
       }
     } catch (_) {
