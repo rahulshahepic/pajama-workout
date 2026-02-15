@@ -59,7 +59,6 @@
       wakeIndicator: $("wake-indicator"),
       btnSync:       $("btn-sync"),
       syncStatus:    $("sync-status"),
-      syncSignout:   $("sync-signout"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -589,13 +588,11 @@
     }
     els.btnSync.textContent = "SYNC";
     if (SyncManager.isSignedIn()) {
-      const email = SyncManager.getEmail();
+      var email = SyncManager.getEmail();
       els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
       els.syncStatus.style.display = "block";
-      els.syncSignout.style.display = "block";
     } else {
       els.syncStatus.style.display = "none";
-      els.syncSignout.style.display = "none";
     }
   }
 
@@ -603,15 +600,15 @@
     if (!syncAvailable()) return;
     els.syncStatus.textContent = "Syncing\u2026";
     els.syncStatus.style.display = "block";
-    const result = await SyncManager.sync();
+    var result = await SyncManager.sync();
     if (result.ok) {
-      const email = SyncManager.getEmail();
+      var email = SyncManager.getEmail();
       els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
       updateStreakBanner();
       if (els.historyScreen.classList.contains("active")) renderHistory();
     } else {
-      els.syncStatus.textContent = "Sync failed";
-      setTimeout(updateSyncUI, 3000);
+      els.syncStatus.textContent = "Sync failed \u00B7 " + (result.reason || "unknown");
+      els.syncStatus.style.display = "block";
     }
   }
 
@@ -627,16 +624,16 @@
       } catch (e) {
         els.syncStatus.textContent = "Sign-in failed";
         els.syncStatus.style.display = "block";
-        setTimeout(updateSyncUI, 3000);
       }
     }
   }
 
-  function handleSignOut(e) {
-    e.preventDefault();
-    if (!syncAvailable()) return;
-    SyncManager.signOut();
-    updateSyncUI();
+  function handleSyncStatusTap() {
+    if (!syncAvailable() || !SyncManager.isSignedIn()) return;
+    if (confirm("Sign out of sync?")) {
+      SyncManager.signOut();
+      updateSyncUI();
+    }
   }
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -697,7 +694,7 @@
       renderHistory();
     });
     els.btnSync.addEventListener("click", handleSyncButton);
-    els.syncSignout.addEventListener("click", handleSignOut);
+    els.syncStatus.addEventListener("click", handleSyncStatusTap);
 
     // Seed the initial history entry so there's something to go "back" to
     history.replaceState({ screen: "picker" }, "");
@@ -712,9 +709,12 @@
 
     // Sync setup (wrapped in try/catch — sync issues must never break the app)
     try {
-      const wasRedirect = await SyncManager.handleRedirect();
+      var redirect = await SyncManager.handleRedirect();
       updateSyncUI();
-      if (wasRedirect || SyncManager.isSignedIn()) {
+      if (redirect.wasRedirect && !redirect.ok) {
+        els.syncStatus.textContent = "Sign-in failed \u00B7 " + (redirect.error || "unknown");
+        els.syncStatus.style.display = "block";
+      } else if (redirect.ok || SyncManager.isSignedIn()) {
         syncAndUpdateUI();
       }
     } catch (_) {

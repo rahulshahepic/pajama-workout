@@ -125,20 +125,26 @@ const SyncManager = (function () {
   /**
    * Call on every page load.  If the URL contains an OAuth code,
    * exchange it for tokens and clean the URL.
-   * Returns true if sign-in succeeded.
+   * Returns { wasRedirect, ok, error? }.
    */
   async function handleRedirect() {
     const params = new URLSearchParams(window.location.search);
 
     // Google may redirect with ?error=... if the user declined
-    if (params.get("error")) { cleanUrl(); return false; }
+    if (params.get("error")) {
+      cleanUrl();
+      return { wasRedirect: true, ok: false, error: params.get("error") };
+    }
 
     const code = params.get("code");
-    if (!code) return false;
+    if (!code) return { wasRedirect: false, ok: false };
 
     const verifier = sessionStorage.getItem(VERIFIER_KEY);
     sessionStorage.removeItem(VERIFIER_KEY);
-    if (!verifier) { cleanUrl(); return false; }   // stale / duplicate tab
+    if (!verifier) {
+      cleanUrl();
+      return { wasRedirect: true, ok: false, error: "missing_verifier" };
+    }
 
     try {
       const res = await fetch(TOKEN_URL, {
@@ -153,7 +159,10 @@ const SyncManager = (function () {
         }),
       });
 
-      if (!res.ok) { cleanUrl(); return false; }
+      if (!res.ok) {
+        cleanUrl();
+        return { wasRedirect: true, ok: false, error: "token_exchange_" + res.status };
+      }
 
       const data = await res.json();
       const tokens = {
@@ -173,12 +182,13 @@ const SyncManager = (function () {
       }
 
       storeTokens(tokens);
-    } catch (_) {
-      // Network error during token exchange — user will need to retry
+    } catch (e) {
+      cleanUrl();
+      return { wasRedirect: true, ok: false, error: "network_error" };
     }
 
     cleanUrl();
-    return isSignedIn();
+    return { wasRedirect: true, ok: isSignedIn() };
   }
 
   function cleanUrl() {
