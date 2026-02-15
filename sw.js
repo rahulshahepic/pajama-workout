@@ -1,12 +1,12 @@
 // Pajama Workout — Service Worker (offline-first)
-const CACHE_NAME = "pajama-workout-v5";
+const CACHE_NAME = "pajama-workout-v6";
 const ASSETS = [
   ".",
   "index.html",
   "css/styles.css",
-  "js/config.js",
-  "js/history.js",
-  "js/app.js",
+  "js/config.js?v=5",
+  "js/history.js?v=5",
+  "js/app.js?v=5",
   "manifest.json",
   "icons/icon-192.svg",
   "icons/icon-512.svg",
