@@ -984,7 +984,7 @@
     els.sessionMultiplier.classList.add("visible");
     els.sessionMultLabel.innerHTML = fmtMultiplier(m);
     els.phaseListContainer.classList.add("visible");
-    els.btnShare.style.display = "inline-block";
+    els.btnShare.style.display = w.custom ? "inline-block" : "none";
     renderPhaseList();
     showButtons("idle");
   }
@@ -1281,17 +1281,18 @@
       panel.style.transition = "none";
     }, { passive: true });
 
-    // Move/end on the panel so dragging doesn't break when finger
-    // drifts off the handle.
+    // MUST be passive:false so we can preventDefault() to stop the
+    // browser from scrolling the panel while we're dragging it.
     panel.addEventListener("touchmove", function (e) {
       if (!dragging) return;
+      e.preventDefault();
       currentY = e.touches[0].clientY;
       var dy = currentY - startY;
       if (dy < 0) dy = 0;
       panel.style.transform = "translateY(" + dy + "px)";
       var opacity = Math.max(0, 1 - dy / 300);
       backdrop.style.opacity = opacity;
-    }, { passive: true });
+    }, { passive: false });
 
     panel.addEventListener("touchend", function () {
       if (!dragging) return;
