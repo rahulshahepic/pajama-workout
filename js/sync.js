@@ -47,6 +47,17 @@ const SyncManager = (function () {
     return base64url(new Uint8Array(digest));
   }
 
+  // ── Token request helper ───────────────────────────────────────
+
+  /** Build URLSearchParams with client_id (and client_secret if set). */
+  function buildTokenParams(extra) {
+    var p = { client_id: GOOGLE_CLIENT_ID };
+    if (typeof GOOGLE_CLIENT_SECRET === "string" && GOOGLE_CLIENT_SECRET) {
+      p.client_secret = GOOGLE_CLIENT_SECRET;
+    }
+    return new URLSearchParams(Object.assign(p, extra));
+  }
+
   // ── Token storage ──────────────────────────────────────────────
 
   function storeTokens(t) {
@@ -74,8 +85,7 @@ const SyncManager = (function () {
     const res = await fetch(TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id:     GOOGLE_CLIENT_ID,
+      body: buildTokenParams({
         grant_type:    "refresh_token",
         refresh_token: t.refresh_token,
       }),
@@ -155,8 +165,7 @@ const SyncManager = (function () {
       const res = await fetch(TOKEN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id:     GOOGLE_CLIENT_ID,
+        body: buildTokenParams({
           code:          code,
           code_verifier: verifier,
           grant_type:    "authorization_code",
