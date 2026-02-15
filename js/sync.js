@@ -325,7 +325,12 @@ const SyncManager = (function () {
   }
 
   // ── Public API ─────────────────────────────────────────────────
-  return { signIn, signOut, isSignedIn, getEmail, sync, handleRedirect };
+  return {
+    signIn, signOut, isSignedIn, getEmail, sync, handleRedirect,
+    _mergeEntries: mergeEntries,
+    _mergeCustomWorkouts: mergeCustomWorkouts,
+    _mergeSettings: mergeSettings,
+  };
 })();
 
 if (typeof module !== "undefined") module.exports = SyncManager;
