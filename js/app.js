@@ -52,6 +52,7 @@
       btnHistory:    $("btn-history"),
       btnHistoryBack:$("btn-history-back"),
       btnClearHistory:$("btn-clear-history"),
+      btnHome:       $("btn-home"),
       historyStats:  $("history-stats"),
       historyList:   $("history-list"),
       streakBanner:  $("streak-banner"),
@@ -197,6 +198,7 @@
     els.btnResume.style.display = st === "paused" ? "inline-block" : "none";
     els.btnReset.style.display  = (st === "paused" || st === "running" || st === "countdown") ? "inline-block" : "none";
     els.btnSkip.style.display   = (st === "running" || st === "paused" || st === "countdown") ? "inline-block" : "none";
+    els.btnHome.style.display   = (st === "idle" || st === "done") ? "inline-block" : "none";
   }
 
   // ── Done screen ─────────────────────────────────────────────
@@ -353,8 +355,15 @@
     state = "idle";
     countdownLeft = 0;
     releaseWakeLock();
-    // go back to picker
-    showPicker();
+    // navigate back — popstate will show picker
+    history.back();
+  }
+
+  function goHome() {
+    // from the "Ready" or "Done" screen, go back to picker
+    if (state === "idle" || state === "done") {
+      history.back();
+    }
   }
 
   function skip() {
@@ -379,9 +388,12 @@
   }
 
   // ── Picker / routing ────────────────────────────────────────
-  function showPicker() {
+
+  // Push = true means we add a history entry; false means popstate called us.
+  function showPicker(push) {
     state = "idle";
     clearInterval(interval);
+    currentWorkoutId = null;
     els.pickerScreen.classList.add("active");
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
@@ -391,6 +403,8 @@
     els.glow.style.background      = "rgba(78,205,196,0.25)";
     els.progressFill.style.width   = "0%";
     els.progressFill.style.background = "#4ECDC4";
+
+    if (push) history.pushState({ screen: "picker" }, "");
 
     buildPicker();
     updateStreakBanner();
@@ -411,7 +425,7 @@
     }
   }
 
-  function selectWorkout(id) {
+  function selectWorkout(id, push) {
     currentWorkoutId = id;
     const w = WORKOUTS[id];
     phases    = w.phases;
@@ -426,6 +440,8 @@
     timeLeft   = phases[0].duration;
     elapsed    = 0;
     state      = "idle";
+
+    if (push !== false) history.pushState({ screen: "workout", id: id }, "");
 
     // display ready state
     applyTheme(phases[0].type);
@@ -442,16 +458,16 @@
   }
 
   // ── History screen ─────────────────────────────────────────
-  function showHistory() {
+  function showHistory(push) {
     els.pickerScreen.classList.remove("active");
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.add("active");
+    if (push !== false) history.pushState({ screen: "history" }, "");
     renderHistory();
   }
 
   function hideHistory() {
-    els.historyScreen.classList.remove("active");
-    showPicker();
+    history.back();
   }
 
   function renderHistory() {
@@ -561,6 +577,28 @@
     }
   });
 
+  // ── Browser history (Back button) ──────────────────────────
+  window.addEventListener("popstate", (e) => {
+    // If a workout is active (countdown/running/paused), stop it first
+    if (state === "countdown" || state === "running" || state === "paused") {
+      clearInterval(interval);
+      state = "idle";
+      countdownLeft = 0;
+      releaseWakeLock();
+    }
+
+    const s = e.state;
+    if (!s || s.screen === "picker") {
+      showPicker(false);
+    } else if (s.screen === "workout" && WORKOUTS[s.id]) {
+      selectWorkout(s.id, false);
+    } else if (s.screen === "history") {
+      showHistory(false);
+    } else {
+      showPicker(false);
+    }
+  });
+
   // ── Init ────────────────────────────────────────────────────
   function init() {
     cacheDOM();
@@ -571,6 +609,7 @@
     els.btnResume.addEventListener("click", resume);
     els.btnReset.addEventListener("click", reset);
     els.btnSkip.addEventListener("click", skip);
+    els.btnHome.addEventListener("click", goHome);
     els.btnHistory.addEventListener("click", showHistory);
     els.btnHistoryBack.addEventListener("click", hideHistory);
     els.btnClearHistory.addEventListener("click", () => {
@@ -578,12 +617,15 @@
       renderHistory();
     });
 
+    // Seed the initial history entry so there's something to go "back" to
+    history.replaceState({ screen: "picker" }, "");
+
     // If only one workout, skip picker and go straight to it
     const workoutKeys = Object.keys(WORKOUTS);
     if (workoutKeys.length === 1) {
       selectWorkout(workoutKeys[0]);
     } else {
-      showPicker();
+      showPicker(false);
     }
   }
 
