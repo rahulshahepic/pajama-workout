@@ -1,5 +1,5 @@
 // Pajama Workout — Service Worker (offline-first)
-const CACHE_NAME = "pajama-workout-v4";
+const CACHE_NAME = "pajama-workout-v5";
 const ASSETS = [
   ".",
   "index.html",
