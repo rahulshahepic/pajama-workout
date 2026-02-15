@@ -165,10 +165,12 @@ const SyncManager = (function () {
       });
 
       if (!res.ok) {
-        var errBody = {};
-        try { errBody = await res.json(); } catch (_) {}
+        var errText = "";
+        try { errText = await res.text(); } catch (_) {}
+        var errCode = "token_exchange";
+        try { errCode = JSON.parse(errText).error || errCode; } catch (_) {}
         cleanUrl();
-        return { wasRedirect: true, ok: false, error: (errBody.error || "token_exchange") + "_" + res.status };
+        return { wasRedirect: true, ok: false, error: errCode + "_" + res.status, detail: errText };
       }
 
       const data = await res.json();
