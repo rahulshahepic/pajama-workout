@@ -73,6 +73,7 @@
       btnClearHistory:$("btn-clear-history"),
       btnHome:       $("btn-home"),
       historyStats:  $("history-stats"),
+      historyHeatmap:$("history-heatmap"),
       historyList:   $("history-list"),
       streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
@@ -665,6 +666,69 @@
     history.back();
   }
 
+  function renderHeatmap() {
+    var entries = WorkoutHistory.getAll();
+    // Count workouts per day
+    var counts = {};
+    for (var i = 0; i < entries.length; i++) {
+      var d = new Date(entries[i].completedAt);
+      var key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      counts[key] = (counts[key] || 0) + 1;
+    }
+
+    // Build 13 weeks (91 days) grid ending today
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Find the Monday 12 weeks ago (13 weeks total)
+    var startDay = new Date(today);
+    var todayDow = (today.getDay() + 6) % 7; // Mon=0
+    startDay.setDate(today.getDate() - todayDow - 12 * 7);
+
+    var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // Month labels row
+    var monthHtml = "";
+    var cursor = new Date(startDay);
+    var lastMonth = -1;
+    for (var w = 0; w < 13; w++) {
+      var m = cursor.getMonth();
+      if (m !== lastMonth) {
+        monthHtml += '<span class="heatmap-month">' + MONTHS[m] + '</span>';
+        lastMonth = m;
+      } else {
+        monthHtml += '<span class="heatmap-month"></span>';
+      }
+      cursor.setDate(cursor.getDate() + 7);
+    }
+
+    // Build grid: 7 rows x 13 cols (Mon-Sun x 13 weeks)
+    var cells = [];
+    for (var row = 0; row < 7; row++) {
+      for (var col = 0; col < 13; col++) {
+        var cellDate = new Date(startDay);
+        cellDate.setDate(startDay.getDate() + col * 7 + row);
+        var key2 = cellDate.getFullYear() + "-" + String(cellDate.getMonth() + 1).padStart(2, "0") + "-" + String(cellDate.getDate()).padStart(2, "0");
+        var count = counts[key2] || 0;
+        var isFuture = cellDate > today;
+        var level = isFuture ? "future" : count === 0 ? "" : count === 1 ? "level-1" : count === 2 ? "level-2" : count === 3 ? "level-3" : "level-4";
+        cells.push('<div class="heatmap-cell ' + level + '"></div>');
+      }
+    }
+
+    els.historyHeatmap.innerHTML =
+      '<div class="heatmap-months">' + monthHtml + '</div>' +
+      '<div class="heatmap-grid">' + cells.join("") + '</div>' +
+      '<div class="heatmap-legend">' +
+        '<span>Less</span>' +
+        '<div class="heatmap-legend-cell heatmap-cell"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-1"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-2"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-3"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-4"></div>' +
+        '<span>More</span>' +
+      '</div>';
+  }
+
   function renderHistory() {
     // Stats
     const total = WorkoutHistory.totalCount();
@@ -675,6 +739,9 @@
       statCard(total, "Total") +
       statCard(streakDays, "Streak") +
       statCard(weekCount, "This Week");
+
+    // Heatmap
+    renderHeatmap();
 
     // List
     const entries = WorkoutHistory.getAll();
