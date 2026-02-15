@@ -5,8 +5,8 @@
 (function () {
   "use strict";
 
-  // ── Constants ────────────────────────────────────────────────
-  const RING_CIRCUMFERENCE = 2 * Math.PI * 110; // must match SVG r=110
+  // ── Constants (computed on init from DOM) ───────────────────
+  let RING_CIRCUMFERENCE = 0;
 
   // ── State ────────────────────────────────────────────────────
   let phases       = [];
@@ -58,6 +58,10 @@
       streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
     };
+
+    // Derive ring circumference from the actual SVG attribute
+    const r = parseFloat(els.timerRing.getAttribute("r"));
+    RING_CIRCUMFERENCE = 2 * Math.PI * r;
   }
 
   // ── Helpers ──────────────────────────────────────────────────
@@ -77,6 +81,15 @@
     if (workCount)   parts.push(`${workCount} exercises`);
     if (stretchCount) parts.push(`${stretchCount} stretches`);
     return parts.join(" \u00B7 ");
+  }
+
+  function workoutDuration(w) {
+    return w.phases.reduce((sum, p) => sum + p.duration, 0);
+  }
+
+  /** Spread a SOUNDS entry into beep(freq, dur, count) */
+  function cue(name) {
+    beep(...SOUNDS[name]);
   }
 
   // ── Audio (tiny beeps) ──────────────────────────────────────
@@ -128,8 +141,8 @@
   });
 
   // ── Theming ─────────────────────────────────────────────────
-  function applyTheme(phaseType) {
-    const t = THEME[phaseType];
+  function applyTheme(key) {
+    const t = THEME[key];
     if (!t) return;
     document.body.style.background = t.bg;
     els.glow.style.background      = t.glow;
@@ -237,7 +250,7 @@
       if (next >= phases.length) {
         clearInterval(interval);
         state = "done";
-        beep(880, 200, 3);
+        cue("done");
         showDone();
         return;
       }
@@ -246,8 +259,8 @@
       const nx   = phases[phaseIndex];
       timeLeft   = nx.duration;
 
-      if (nx.type !== prev.type) beep(770, 150, 2);
-      else beep(660, 100, 1);
+      if (nx.type !== prev.type) cue("transition");
+      else cue("start");
 
       applyTheme(nx.type);
       render();
@@ -255,7 +268,7 @@
     }
     timeLeft--;
     elapsed++;
-    if (timeLeft <= 3) beep(550, 80, 1);
+    if (timeLeft <= 3) cue("tick");
     render();
   }
 
@@ -288,10 +301,10 @@
 
   function countdownTick() {
     countdownLeft--;
-    if (countdownLeft <= 3 && countdownLeft > 0) beep(550, 80, 1);
+    if (countdownLeft <= 3 && countdownLeft > 0) cue("tick");
     if (countdownLeft <= 0) {
       clearInterval(interval);
-      beep(770, 150, 2);
+      cue("transition");
       beginWorkout();
       return;
     }
@@ -299,7 +312,8 @@
   }
 
   function renderCountdown() {
-    const progress = 1 - (countdownLeft / (typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 10));
+    const cdTotal = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 10;
+    const progress = 1 - (countdownLeft / cdTotal);
     const offset = RING_CIRCUMFERENCE * (1 - progress);
     els.timerRing.setAttribute("stroke-dashoffset", offset);
     els.timerDisplay.textContent = countdownLeft;
@@ -308,19 +322,13 @@
     els.exerciseName.textContent = phases[0].name;
     els.exerciseHint.textContent = "starts in " + countdownLeft + "s — tap SKIP to start now";
     els.upnextContainer.style.display = "none";
-
-    // Use a neutral warm colour for countdown
-    document.body.style.background = "#1a2332";
-    els.glow.style.background = "rgba(255,255,255,0.08)";
-    els.timerRing.setAttribute("stroke", "rgba(255,255,255,0.4)");
-    els.timerDisplay.style.color = "rgba(255,255,255,0.6)";
-    els.exerciseName.style.color = "rgba(255,255,255,0.6)";
     els.progressFill.style.width = "0%";
+    applyTheme("countdown");
   }
 
   function skipCountdown() {
     clearInterval(interval);
-    beep(770, 150, 2);
+    cue("transition");
     beginWorkout();
   }
 
@@ -329,7 +337,7 @@
     applyTheme(phases[phaseIndex].type);
     render();
     showButtons("running");
-    beep(660, 100, 1);
+    cue("start");
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     requestWakeLock();
@@ -375,13 +383,13 @@
     if (next >= phases.length) {
       clearInterval(interval);
       state = "done";
-      beep(880, 200, 3);
+      cue("done");
       showDone();
       return;
     }
     phaseIndex = next;
     timeLeft = phases[phaseIndex].duration;
-    beep(770, 150, 2);
+    cue("transition");
     applyTheme(phases[phaseIndex].type);
     render();
     // if we were paused, stay paused
@@ -398,11 +406,8 @@
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
 
-    // reset body to default look
-    document.body.style.background = "#1a2332";
-    els.glow.style.background      = "rgba(78,205,196,0.25)";
-    els.progressFill.style.width   = "0%";
-    els.progressFill.style.background = "#4ECDC4";
+    applyTheme("idle");
+    els.progressFill.style.width = "0%";
 
     if (push) history.pushState({ screen: "picker" }, "");
 
@@ -413,7 +418,13 @@
   function buildPicker() {
     const container = $("workout-list");
     container.innerHTML = "";
-    for (const key of Object.keys(WORKOUTS)) {
+
+    // Sort by duration (shortest first)
+    const sorted = Object.keys(WORKOUTS).sort(
+      (a, b) => workoutDuration(WORKOUTS[a]) - workoutDuration(WORKOUTS[b])
+    );
+
+    for (const key of sorted) {
       const w    = WORKOUTS[key];
       const card = document.createElement("div");
       card.className = "workout-card";

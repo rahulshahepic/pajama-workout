@@ -13,6 +13,9 @@
  * Each phase: { name, type, duration (seconds), hint }
  */
 
+/** Bump this when any cached asset changes.  SW uses it for cache-busting. */
+const APP_VERSION = 10;
+
 const WORKOUTS = {
   /* ── Default 5 + 5 routine ──────────────────────────────────── */
   "pajama-classic": {
@@ -170,16 +173,18 @@ const COUNTDOWN_SECS = 10;
 const DEFAULT_WORKOUT = "pajama-classic";
 
 /**
- * Theme colours for each phase type.
+ * Theme colours for each phase type + special states.
  * bg       — page background
  * accent   — primary accent colour (ring, text highlights)
  * glow     — radial glow behind the timer
  * progress — progress-bar fill
  */
 const THEME = {
-  work:    { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
-  rest:    { bg: "#1a1a2e", accent: "#6C63FF", glow: "rgba(108,99,255,0.2)",   progress: "#8B85FF" },
-  stretch: { bg: "#1a2118", accent: "#A8D08D", glow: "rgba(168,208,141,0.15)", progress: "#A8D08D" },
+  work:      { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
+  rest:      { bg: "#1a1a2e", accent: "#6C63FF", glow: "rgba(108,99,255,0.2)",   progress: "#8B85FF" },
+  stretch:   { bg: "#1a2118", accent: "#A8D08D", glow: "rgba(168,208,141,0.15)", progress: "#A8D08D" },
+  countdown: { bg: "#1a2332", accent: "rgba(255,255,255,0.6)", glow: "rgba(255,255,255,0.08)", progress: "rgba(255,255,255,0.2)" },
+  idle:      { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
 };
 
 /** Completion screen overrides */
@@ -188,3 +193,19 @@ const DONE_THEME = {
   glow: "rgba(168,208,141,0.08)",
   accent: "#A8D08D",
 };
+
+/**
+ * Audio cues — [frequency Hz, duration ms, repeat count].
+ * Named semantically so call-sites read clearly.
+ */
+const SOUNDS = {
+  done:       [880, 200, 3],   // workout complete
+  transition: [770, 150, 2],   // phase type changed / countdown end
+  start:      [660, 100, 1],   // phase started (same type)
+  tick:       [550,  80, 1],   // last 3 seconds warning
+};
+
+// Allow Node.js test imports while keeping browser globals working
+if (typeof module !== "undefined") {
+  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS };
+}
