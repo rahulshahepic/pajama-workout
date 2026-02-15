@@ -1269,23 +1269,26 @@
   // ── Swipe-down-to-close for bottom sheets ──────────────────
   function setupSwipeToDismiss(panel, backdrop, onClose) {
     var startY = 0, currentY = 0, dragging = false;
+    // Use the handle bar as the drag target — it doesn't scroll,
+    // so the browser won't hijack the touch for scroll.
+    var handle = panel.querySelector(".settings-handle");
+    var dragTarget = handle || panel;
 
-    panel.addEventListener("touchstart", function (e) {
-      // Only start drag if at scroll top or touching the handle area
-      if (panel.scrollTop > 0 && e.target !== panel.querySelector(".settings-handle")) return;
+    dragTarget.addEventListener("touchstart", function (e) {
       startY = e.touches[0].clientY;
       currentY = startY;
       dragging = true;
       panel.style.transition = "none";
     }, { passive: true });
 
+    // Move/end on the panel so dragging doesn't break when finger
+    // drifts off the handle.
     panel.addEventListener("touchmove", function (e) {
       if (!dragging) return;
       currentY = e.touches[0].clientY;
       var dy = currentY - startY;
-      if (dy < 0) dy = 0; // don't drag upward
+      if (dy < 0) dy = 0;
       panel.style.transform = "translateY(" + dy + "px)";
-      // Dim backdrop proportionally
       var opacity = Math.max(0, 1 - dy / 300);
       backdrop.style.opacity = opacity;
     }, { passive: true });
@@ -1496,6 +1499,7 @@
     // ── Settings panel ────────────────────────────────────────
     els.btnSettings.addEventListener("click", openSettings);
     els.settingsBackdrop.addEventListener("click", closeSettings);
+    $("btn-settings-done").addEventListener("click", closeSettings);
     setupSwipeToDismiss(els.settingsPanel, els.settingsBackdrop, closeSettings);
     setupSwipeToDismiss(els.swapPanel, els.swapBackdrop, closeSwap);
 
