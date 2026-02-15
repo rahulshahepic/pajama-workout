@@ -25,7 +25,7 @@
 
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
-  let settings = { multiplier: 1, restMultiplier: 1, tts: false, weeklyGoal: 3, ambient: false };
+  let settings = { multiplier: 1, restMultiplier: 1, tts: false, announceHints: false, weeklyGoal: 3, ambient: false };
 
   function loadSettings() {
     try {
@@ -34,6 +34,7 @@
         settings.multiplier = typeof s.multiplier === "number" ? s.multiplier : 1;
         settings.restMultiplier = typeof s.restMultiplier === "number" ? s.restMultiplier : 1;
         settings.tts = !!s.tts;
+        settings.announceHints = !!s.announceHints;
         settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
         settings.ambient = !!s.ambient;
       }
@@ -91,6 +92,7 @@
       restMultSlider:    $("rest-multiplier-slider"),
       restMultLabel:     $("rest-multiplier-label"),
       ttsToggle:         $("tts-toggle"),
+      hintsToggle:       $("hints-toggle"),
       ambientToggle:     $("ambient-toggle"),
       goalLabel:         $("goal-label"),
       btnGoalDown:       $("btn-goal-down"),
@@ -131,11 +133,19 @@
     let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
     var m = mult || 1;
     var rm = restMult || m;
-    for (const p of phasesArr) {
+    for (var i = 0; i < phasesArr.length; i++) {
+      var p = phasesArr[i];
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
       if (p.type === "yoga") yogaCount++;
-      total += Math.round(p.duration * (p.type === "rest" ? rm : m));
+      var dur = Math.round(p.duration * (p.type === "rest" ? rm : m));
+      // If announceHints is on, rest phases may be extended so the
+      // next phase's hint has time to be read aloud.
+      if (settings.announceHints && p.type === "rest" && i + 1 < phasesArr.length) {
+        var nextHint = phasesArr[i + 1].hint;
+        if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
+      }
+      total += dur;
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
@@ -143,6 +153,25 @@
     if (yogaCount)    parts.push(`${yogaCount} poses`);
     if (stretchCount) parts.push(`${stretchCount} stretches`);
     return parts.join(" \u00B7 ");
+  }
+
+  /**
+   * Build the final phase array with durations adjusted for multipliers
+   * and (when announceHints is on) for minimum rest to fit the next hint.
+   */
+  function buildPhases(raw, m, rm) {
+    var result = [];
+    for (var i = 0; i < raw.length; i++) {
+      var p = raw[i];
+      var mult = p.type === "rest" ? rm : m;
+      var dur = Math.round(p.duration * mult);
+      if (settings.announceHints && p.type === "rest" && i + 1 < raw.length) {
+        var nextHint = raw[i + 1].hint;
+        if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
+      }
+      result.push({ name: p.name, type: p.type, duration: dur, hint: p.hint });
+    }
+    return result;
   }
 
   function workoutDuration(w, mult) {
@@ -182,6 +211,22 @@
     u.rate = 1.1;
     u.volume = 0.8;
     speechSynthesis.speak(u);
+  }
+
+  /** Speak hint text (only when announceHints is on). */
+  function speakHint(text) {
+    if (!settings.announceHints || !window.speechSynthesis) return;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0;
+    u.volume = 0.8;
+    speechSynthesis.speak(u);
+  }
+
+  /** Estimate how many seconds TTS needs for a given text (~2.5 words/sec at rate 1.0, +1s buffer). */
+  function hintSpeechSecs(text) {
+    if (!text) return 0;
+    var words = text.trim().split(/\s+/).length;
+    return Math.ceil(words / 2.5) + 1;
   }
 
   function cancelSpeech() {
@@ -399,6 +444,10 @@
       else cue("start");
 
       speak(nx.name);
+      // If entering a rest phase with announceHints, read the upcoming hint
+      if (settings.announceHints && nx.type === "rest" && phaseIndex + 1 < phases.length) {
+        speakHint(phases[phaseIndex + 1].hint);
+      }
       applyTheme(nx.type);
       render();
       return;
@@ -437,9 +486,16 @@
   }
 
   function startCountdown(secs) {
+    // When announceHints is on, ensure the countdown is long enough for the first hint
+    if (settings.announceHints && phases.length > 0 && phases[0].hint) {
+      secs = Math.max(secs, hintSpeechSecs(phases[0].hint));
+    }
     countdownLeft = secs;
     state = "countdown";
     speak("Get ready");
+    if (settings.announceHints && phases.length > 0 && phases[0].hint) {
+      speakHint(phases[0].hint);
+    }
     renderCountdown();
     showButtons("countdown");
     requestWakeLock();
@@ -929,10 +985,7 @@
     var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
     var rm = sessionRestMultiplier;
-    phases = filterHidden(currentWorkoutId, w.phases).map(function (p) {
-      var mult = p.type === "rest" ? rm : m;
-      return { name: p.name, type: p.type, duration: Math.round(p.duration * mult), hint: p.hint };
-    });
+    phases = buildPhases(filterHidden(currentWorkoutId, w.phases), m, rm);
     totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
     timeLeft = phases[0].duration;
 
@@ -950,10 +1003,7 @@
     var m = sessionMultiplier;
     var rm = sessionRestMultiplier;
     var filtered = filterHidden(id, w.phases);
-    phases = filtered.map(function (p) {
-      var mult = p.type === "rest" ? rm : m;
-      return { name: p.name, type: p.type, duration: Math.round(p.duration * mult), hint: p.hint };
-    });
+    phases = buildPhases(filtered, m, rm);
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
     els.pickerScreen.classList.remove("active");
@@ -1253,6 +1303,7 @@
     els.restMultSlider.value = settings.restMultiplier;
     els.restMultLabel.innerHTML = fmtMultiplier(settings.restMultiplier);
     els.ttsToggle.checked = settings.tts;
+    els.hintsToggle.checked = settings.announceHints;
     els.ambientToggle.checked = settings.ambient;
     els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
     els.settingsBackdrop.classList.add("open");
@@ -1525,6 +1576,11 @@
 
     els.ttsToggle.addEventListener("change", function () {
       settings.tts = this.checked;
+      saveSettings();
+    });
+
+    els.hintsToggle.addEventListener("change", function () {
+      settings.announceHints = this.checked;
       saveSettings();
     });
 
