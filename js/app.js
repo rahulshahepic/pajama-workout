@@ -24,7 +24,7 @@
 
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
-  let settings = { multiplier: 1, tts: false };
+  let settings = { multiplier: 1, tts: false, weeklyGoal: 3 };
 
   function loadSettings() {
     try {
@@ -32,6 +32,7 @@
       if (s && typeof s === "object") {
         settings.multiplier = typeof s.multiplier === "number" ? s.multiplier : 1;
         settings.tts = !!s.tts;
+        settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
       }
     } catch (_) {}
   }
@@ -75,6 +76,7 @@
       historyStats:  $("history-stats"),
       historyHeatmap:$("history-heatmap"),
       historyList:   $("history-list"),
+      goalRingContainer: $("goal-ring-container"),
       streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
       btnSettings:       $("btn-settings"),
@@ -84,6 +86,9 @@
       multiplierSlider:  $("multiplier-slider"),
       multiplierLabel:   $("multiplier-label"),
       ttsToggle:         $("tts-toggle"),
+      goalLabel:         $("goal-label"),
+      btnGoalDown:       $("btn-goal-down"),
+      btnGoalUp:         $("btn-goal-up"),
       syncStatusLine:    $("sync-status-line"),
       sessionMultiplier: $("session-multiplier"),
       sessionMultLabel:  $("session-mult-label"),
@@ -505,6 +510,7 @@
     if (push) history.pushState({ screen: "picker" }, "");
 
     buildPicker();
+    renderGoalRing();
     updateStreakBanner();
   }
 
@@ -953,6 +959,29 @@
     });
   }
 
+  function renderGoalRing() {
+    var goal = settings.weeklyGoal;
+    if (!goal || goal <= 0) {
+      els.goalRingContainer.classList.remove("visible");
+      return;
+    }
+    var count = WorkoutHistory.thisWeekCount();
+    var pct = Math.min(count / goal, 1);
+    var r = 36;
+    var circ = 2 * Math.PI * r;
+    var offset = circ * (1 - pct);
+    var done = count >= goal;
+    els.goalRingContainer.classList.add("visible");
+    els.goalRingContainer.innerHTML =
+      '<svg class="goal-ring-svg" width="84" height="84" viewBox="0 0 84 84">' +
+        '<circle class="goal-ring-bg" cx="42" cy="42" r="' + r + '"/>' +
+        '<circle class="goal-ring-fill' + (done ? " complete" : "") + '" cx="42" cy="42" r="' + r + '"' +
+          ' stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '"/>' +
+        '<text x="42" y="46" text-anchor="middle" fill="' + (done ? "#A8D08D" : "rgba(255,255,255,0.6)") + '" font-size="18" font-weight="700" font-family="var(--mono)" style="transform:rotate(90deg);transform-origin:42px 42px">' + count + '/' + goal + '</text>' +
+      '</svg>' +
+      '<div class="goal-ring-text">' + (done ? '<strong>Goal hit!</strong> Keep going.' : count + ' of ' + goal + ' this week') + '</div>';
+  }
+
   function updateStreakBanner() {
     const s = WorkoutHistory.streak();
     const total = WorkoutHistory.totalCount();
@@ -1068,6 +1097,7 @@
     els.multiplierSlider.value = settings.multiplier;
     els.multiplierLabel.innerHTML = fmtMultiplier(settings.multiplier);
     els.ttsToggle.checked = settings.tts;
+    els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
     els.settingsBackdrop.classList.add("open");
     els.settingsPanel.classList.add("open");
   }
@@ -1198,6 +1228,17 @@
 
     els.ttsToggle.addEventListener("change", function () {
       settings.tts = this.checked;
+      saveSettings();
+    });
+
+    els.btnGoalDown.addEventListener("click", function () {
+      settings.weeklyGoal = Math.max(1, settings.weeklyGoal - 1);
+      els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
+      saveSettings();
+    });
+    els.btnGoalUp.addEventListener("click", function () {
+      settings.weeklyGoal = Math.min(14, settings.weeklyGoal + 1);
+      els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
       saveSettings();
     });
 
