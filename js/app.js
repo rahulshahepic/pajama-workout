@@ -14,7 +14,8 @@
   let elapsed      = 0;
   let phaseIndex   = 0;
   let timeLeft     = 0;
-  let state        = "idle";      // idle | running | paused | done
+  let state        = "idle";      // idle | countdown | running | paused | done
+  let countdownLeft = 0;
   let interval     = null;
   let audioCtx     = null;
   let wakeLock     = null;
@@ -194,8 +195,8 @@
     els.btnStart.textContent    = st === "done" ? "AGAIN" : "START";
     els.btnPause.style.display  = st === "running" ? "inline-block" : "none";
     els.btnResume.style.display = st === "paused" ? "inline-block" : "none";
-    els.btnReset.style.display  = (st === "paused" || st === "running") ? "inline-block" : "none";
-    els.btnSkip.style.display   = (st === "running" || st === "paused") ? "inline-block" : "none";
+    els.btnReset.style.display  = (st === "paused" || st === "running" || st === "countdown") ? "inline-block" : "none";
+    els.btnSkip.style.display   = (st === "running" || st === "paused" || st === "countdown") ? "inline-block" : "none";
   }
 
   // ── Done screen ─────────────────────────────────────────────
@@ -258,13 +259,70 @@
 
   // ── Public actions ──────────────────────────────────────────
   function start() {
-    if (state === "idle" || state === "done") {
-      phaseIndex = 0;
-      timeLeft   = phases[0].duration;
-      elapsed    = 0;
-      els.timerContainer.style.display = "block";
-      els.doneCheck.style.display      = "none";
+    if (state !== "idle" && state !== "done") return;
+    phaseIndex = 0;
+    timeLeft   = phases[0].duration;
+    elapsed    = 0;
+    els.timerContainer.style.display = "block";
+    els.doneCheck.style.display      = "none";
+
+    const cdSecs = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 0;
+    if (cdSecs > 0) {
+      startCountdown(cdSecs);
+    } else {
+      beginWorkout();
     }
+  }
+
+  function startCountdown(secs) {
+    countdownLeft = secs;
+    state = "countdown";
+    renderCountdown();
+    showButtons("countdown");
+    requestWakeLock();
+    clearInterval(interval);
+    interval = setInterval(countdownTick, 1000);
+  }
+
+  function countdownTick() {
+    countdownLeft--;
+    if (countdownLeft <= 3 && countdownLeft > 0) beep(550, 80, 1);
+    if (countdownLeft <= 0) {
+      clearInterval(interval);
+      beep(770, 150, 2);
+      beginWorkout();
+      return;
+    }
+    renderCountdown();
+  }
+
+  function renderCountdown() {
+    const progress = 1 - (countdownLeft / (typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 10));
+    const offset = RING_CIRCUMFERENCE * (1 - progress);
+    els.timerRing.setAttribute("stroke-dashoffset", offset);
+    els.timerDisplay.textContent = countdownLeft;
+    els.sectionLabel.textContent = "Get Ready";
+    els.counterLabel.textContent = "";
+    els.exerciseName.textContent = phases[0].name;
+    els.exerciseHint.textContent = "starts in " + countdownLeft + "s — tap SKIP to start now";
+    els.upnextContainer.style.display = "none";
+
+    // Use a neutral warm colour for countdown
+    document.body.style.background = "#1a2332";
+    els.glow.style.background = "rgba(255,255,255,0.08)";
+    els.timerRing.setAttribute("stroke", "rgba(255,255,255,0.4)");
+    els.timerDisplay.style.color = "rgba(255,255,255,0.6)";
+    els.exerciseName.style.color = "rgba(255,255,255,0.6)";
+    els.progressFill.style.width = "0%";
+  }
+
+  function skipCountdown() {
+    clearInterval(interval);
+    beep(770, 150, 2);
+    beginWorkout();
+  }
+
+  function beginWorkout() {
     state = "running";
     applyTheme(phases[phaseIndex].type);
     render();
@@ -293,12 +351,14 @@
   function reset() {
     clearInterval(interval);
     state = "idle";
+    countdownLeft = 0;
     releaseWakeLock();
     // go back to picker
     showPicker();
   }
 
   function skip() {
+    if (state === "countdown") { skipCountdown(); return; }
     if (state !== "running" && state !== "paused") return;
     // consume remaining time of current phase
     elapsed += timeLeft;
@@ -488,14 +548,15 @@
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
       e.preventDefault();
-      if (state === "running") pause();
+      if (state === "countdown") skipCountdown();
+      else if (state === "running") pause();
       else if (state === "paused") resume();
       else if (state === "idle" && currentWorkoutId) start();
     }
-    if (e.code === "KeyR" && (state === "paused" || state === "running")) {
+    if (e.code === "KeyR" && (state === "paused" || state === "running" || state === "countdown")) {
       reset();
     }
-    if (e.code === "KeyS" && (state === "running" || state === "paused")) {
+    if (e.code === "KeyS" && (state === "running" || state === "paused" || state === "countdown")) {
       skip();
     }
   });
