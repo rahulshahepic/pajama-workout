@@ -14,7 +14,7 @@
  */
 
 /** Bump this when any cached asset changes.  SW uses it for cache-busting. */
-const APP_VERSION = 20;
+const APP_VERSION = 22;
 
 /** Google OAuth — public identifier, not a secret.  Change if you fork. */
 const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
