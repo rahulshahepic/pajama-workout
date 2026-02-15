@@ -3,7 +3,7 @@ const CACHE_NAME = "pajama-workout-v9";
 const ASSETS = [
   ".",
   "index.html",
-  "css/styles.css",
+  "css/styles.css?v=9",
   "js/config.js?v=9",
   "js/history.js?v=9",
   "js/app.js?v=9",
