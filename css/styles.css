@@ -297,6 +297,15 @@ body {
 }
 #timer-screen.active { display: flex; }
 
+/* ── Home button (top of timer screen) ────────────────────── */
+.btn-home {
+  align-self: flex-start;
+  padding: 8px 16px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
 /* ── Streak banner (picker screen) ─────────────────────────── */
 #streak-banner {
   display: none;
