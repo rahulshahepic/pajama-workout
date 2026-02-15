@@ -365,6 +365,36 @@ body {
   color: rgba(255,255,255,0.3);
   letter-spacing: 0.3px;
 }
+.workout-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.workout-card-info {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.workout-card-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.workout-card-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.2);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.workout-card-btn:hover { color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.06); }
+.workout-card-delete:hover { color: rgba(255,100,100,0.6); }
 
 /* ── Timer screen (hidden by default until a workout starts) ── */
 #timer-screen {
@@ -970,7 +1000,7 @@ body {
 .settings-multiplier {
   text-align: center;
 }
-#multiplier-label {
+#multiplier-label, #rest-multiplier-label {
   font-size: 28px;
   font-weight: 700;
   font-family: var(--mono);
@@ -978,7 +1008,7 @@ body {
   display: block;
   margin-bottom: 8px;
 }
-#multiplier-slider {
+#multiplier-slider, #rest-multiplier-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
@@ -987,7 +1017,7 @@ body {
   background: rgba(255,255,255,0.1);
   outline: none;
 }
-#multiplier-slider::-webkit-slider-thumb {
+#multiplier-slider::-webkit-slider-thumb, #rest-multiplier-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 22px;
   height: 22px;
@@ -997,7 +1027,7 @@ body {
   border: 2px solid #1e2a3a;
   box-shadow: 0 0 6px rgba(78,205,196,0.3);
 }
-#multiplier-slider::-moz-range-thumb {
+#multiplier-slider::-moz-range-thumb, #rest-multiplier-slider::-moz-range-thumb {
   width: 22px;
   height: 22px;
   border-radius: 50%;

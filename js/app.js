@@ -589,18 +589,57 @@
       const w    = all[key];
       const card = document.createElement("div");
       card.className = "workout-card";
+      var isCustom = !!w.custom;
       var cat = (typeof CATEGORIES !== "undefined" && w.category && CATEGORIES[w.category]) ? CATEGORIES[w.category] : null;
       if (cat) {
         card.style.borderLeftWidth = "3px";
         card.style.borderLeftColor = cat.color;
       }
       var meta = summarise(w.phases, m, settings.restMultiplier);
+      var actionsHtml = "";
+      if (isCustom) {
+        actionsHtml =
+          '<div class="workout-card-actions">' +
+            '<button class="workout-card-btn workout-card-edit" data-id="' + key + '" aria-label="Edit">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+            '</button>' +
+            '<button class="workout-card-btn workout-card-delete" data-id="' + key + '" aria-label="Delete">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>' +
+            '</button>' +
+          '</div>';
+      }
       card.innerHTML =
-        `<div class="workout-card-title">${w.title}</div>` +
-        `<div class="workout-card-meta">${meta}</div>`;
-      card.addEventListener("click", () => selectWorkout(key));
+        '<div class="workout-card-row">' +
+          '<div class="workout-card-info">' +
+            '<div class="workout-card-title">' + escHtml(w.title) + '</div>' +
+            '<div class="workout-card-meta">' + meta + '</div>' +
+          '</div>' +
+          actionsHtml +
+        '</div>';
+      // Clicking the card body starts the workout
+      card.querySelector(".workout-card-info").addEventListener("click", function () { selectWorkout(key); });
+      // If custom, wire edit/delete buttons
+      if (isCustom) {
+        card.querySelector(".workout-card-edit").addEventListener("click", function (e) {
+          e.stopPropagation();
+          showBuilder(true, this.dataset.id);
+        });
+        card.querySelector(".workout-card-delete").addEventListener("click", function (e) {
+          e.stopPropagation();
+          deleteCustomWorkout(this.dataset.id);
+        });
+      }
+      // For built-in workouts (no action buttons), the card-info covers entire card
+      card.style.cursor = "pointer";
       container.appendChild(card);
     }
+  }
+
+  function deleteCustomWorkout(id) {
+    if (!customWorkouts[id]) return;
+    delete customWorkouts[id];
+    saveCustomWorkouts();
+    buildPicker();
   }
 
   // ── Phase list & swap (Ready screen) ──────────────────────
@@ -1198,7 +1237,10 @@
     var result = await SyncManager.sync();
     if (result.ok) {
       lastSyncedAt = new Date();
+      // Reload custom workouts in case remote had new ones
+      loadCustomWorkouts();
       updatePickerStatus();
+      if (els.pickerScreen.classList.contains("active")) buildPicker();
       if (els.historyScreen.classList.contains("active")) renderHistory();
     }
   }
@@ -1215,11 +1257,51 @@
     els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
     els.settingsBackdrop.classList.add("open");
     els.settingsPanel.classList.add("open");
+    els.settingsPanel.style.transform = "";
   }
 
   function closeSettings() {
     els.settingsBackdrop.classList.remove("open");
     els.settingsPanel.classList.remove("open");
+    els.settingsPanel.style.transform = "";
+  }
+
+  // ── Swipe-down-to-close for bottom sheets ──────────────────
+  function setupSwipeToDismiss(panel, backdrop, onClose) {
+    var startY = 0, currentY = 0, dragging = false;
+
+    panel.addEventListener("touchstart", function (e) {
+      // Only start drag if at scroll top or touching the handle area
+      if (panel.scrollTop > 0 && e.target !== panel.querySelector(".settings-handle")) return;
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      dragging = true;
+      panel.style.transition = "none";
+    }, { passive: true });
+
+    panel.addEventListener("touchmove", function (e) {
+      if (!dragging) return;
+      currentY = e.touches[0].clientY;
+      var dy = currentY - startY;
+      if (dy < 0) dy = 0; // don't drag upward
+      panel.style.transform = "translateY(" + dy + "px)";
+      // Dim backdrop proportionally
+      var opacity = Math.max(0, 1 - dy / 300);
+      backdrop.style.opacity = opacity;
+    }, { passive: true });
+
+    panel.addEventListener("touchend", function () {
+      if (!dragging) return;
+      dragging = false;
+      var dy = currentY - startY;
+      panel.style.transition = "";
+      backdrop.style.opacity = "";
+      if (dy > 80) {
+        onClose();
+      } else {
+        panel.style.transform = "";
+      }
+    });
   }
 
   function fmtMultiplier(v) {
@@ -1414,6 +1496,8 @@
     // ── Settings panel ────────────────────────────────────────
     els.btnSettings.addEventListener("click", openSettings);
     els.settingsBackdrop.addEventListener("click", closeSettings);
+    setupSwipeToDismiss(els.settingsPanel, els.settingsBackdrop, closeSettings);
+    setupSwipeToDismiss(els.swapPanel, els.swapBackdrop, closeSwap);
 
     els.multiplierSlider.addEventListener("input", function () {
       var v = parseFloat(this.value);
