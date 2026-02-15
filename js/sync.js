@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    Pajama Workout — Sync (Google Drive appdata)
 
-   OAuth2 Authorization Code flow with PKCE (no client secret).
+   Uses Google Identity Services (GIS) token model to get an
+   access token directly — no client secret, no code exchange.
    Stores workout history in a hidden app-owned file on the user's
-   Google Drive.  The file is invisible to the user and only
-   accessible by this Client ID.
+   Google Drive.
 
    Requires these globals from config.js:
      GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME
@@ -13,38 +13,51 @@
      .exportData()  — returns the local envelope
      .replaceEntries(entries) — overwrites local entries
 
+   Requires the GIS library loaded in index.html:
+     <script src="https://accounts.google.com/gsi/client"></script>
+
    ═══════════════════════════════════════════════════════════════ */
 
 const SyncManager = (function () {
   "use strict";
 
   // ── Constants ──────────────────────────────────────────────────
-  const TOKEN_KEY      = "pajama-sync-tokens";
-  const VERIFIER_KEY   = "pajama-sync-verifier";
-  const REDIRECT_KEY   = "pajama-sync-redirect-uri";
-  const TOKEN_URL   = "https://oauth2.googleapis.com/token";
-  const AUTH_URL    = "https://accounts.google.com/o/oauth2/v2/auth";
-  const DRIVE_API   = "https://www.googleapis.com/drive/v3";
-  const UPLOAD_API  = "https://www.googleapis.com/upload/drive/v3";
+  const TOKEN_KEY  = "pajama-sync-tokens";
+  const DRIVE_API  = "https://www.googleapis.com/drive/v3";
+  const UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 
-  // ── PKCE helpers ───────────────────────────────────────────────
+  // ── GIS token client (lazy-initialized) ───────────────────────
+  var tokenClient = null;
+  var pendingResolve = null;
 
-  function base64url(bytes) {
-    let bin = "";
-    for (const b of bytes) bin += String.fromCharCode(b);
-    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  function ensureClient() {
+    if (tokenClient) return;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope:     GOOGLE_SCOPES,
+      callback:  function (response) {
+        if (response.error) {
+          if (pendingResolve) { pendingResolve(null); pendingResolve = null; }
+          return;
+        }
+        var tokens = {
+          access_token: response.access_token,
+          expires_at:   Date.now() + response.expires_in * 1000,
+          email:        null,
+        };
+        storeTokens(tokens);
+        if (pendingResolve) { pendingResolve(tokens); pendingResolve = null; }
+      },
+    });
   }
 
-  function generateVerifier() {
-    const arr = new Uint8Array(32);
-    crypto.getRandomValues(arr);
-    return base64url(arr);
-  }
-
-  async function computeChallenge(verifier) {
-    const data = new TextEncoder().encode(verifier);
-    const digest = await crypto.subtle.digest("SHA-256", data);
-    return base64url(new Uint8Array(digest));
+  /** Request an access token from Google. Shows consent popup if needed. */
+  function requestToken(options) {
+    return new Promise(function (resolve) {
+      ensureClient();
+      pendingResolve = resolve;
+      tokenClient.requestAccessToken(options || {});
+    });
   }
 
   // ── Token storage ──────────────────────────────────────────────
@@ -65,232 +78,77 @@ const SyncManager = (function () {
     return !t || !t.expires_at || Date.now() >= t.expires_at - 60000;
   }
 
-  // ── Token refresh (silent re-auth via hidden iframe) ───────────
+  // ── Token access ──────────────────────────────────────────────
 
-  function silentReAuth() {
-    return new Promise(function (resolve) {
-      var iframe = document.createElement("iframe");
-      iframe.style.display = "none";
-
-      var timeout = setTimeout(function () { cleanup(); resolve(null); }, 10000);
-
-      function cleanup() {
-        clearTimeout(timeout);
-        try { document.body.removeChild(iframe); } catch (_) {}
-      }
-
-      // The iframe will load our page with ?code=… — we intercept it
-      iframe.addEventListener("load", function () {
-        try {
-          var iframeUrl = new URL(iframe.contentWindow.location.href);
-          var code = iframeUrl.searchParams.get("code");
-          if (code) {
-            cleanup();
-            resolve(code);
-          } else {
-            cleanup();
-            resolve(null);
-          }
-        } catch (_) {
-          // cross-origin or other error
-          cleanup();
-          resolve(null);
-        }
-      });
-
-      var challenge;
-      var verifier = generateVerifier();
-      computeChallenge(verifier).then(function (ch) {
-        challenge = ch;
-        localStorage.setItem(VERIFIER_KEY, verifier);
-        localStorage.setItem(REDIRECT_KEY, getRedirectUri());
-
-        var params = new URLSearchParams({
-          client_id:             GOOGLE_CLIENT_ID,
-          redirect_uri:          getRedirectUri(),
-          response_type:         "code",
-          scope:                 GOOGLE_SCOPES,
-          code_challenge:        challenge,
-          code_challenge_method: "S256",
-          prompt:                "none",
-        });
-
-        document.body.appendChild(iframe);
-        iframe.src = AUTH_URL + "?" + params.toString();
-      });
-    });
+  async function getAccessToken() {
+    var t = loadTokens();
+    if (t && !isExpired(t)) return t.access_token;
+    // Token missing or expired — silently request a new one
+    var fresh = await requestToken({ prompt: "" });
+    return fresh ? fresh.access_token : null;
   }
 
   async function refreshAccessToken() {
-    // Try silent re-auth — Google will skip consent if user already authorized
-    var code = await silentReAuth();
-    if (!code) { clearTokens(); return null; }
-
-    var verifier    = localStorage.getItem(VERIFIER_KEY);
-    var redirectUri = localStorage.getItem(REDIRECT_KEY);
-    localStorage.removeItem(VERIFIER_KEY);
-    localStorage.removeItem(REDIRECT_KEY);
-    if (!verifier) { clearTokens(); return null; }
-
-    var res = await fetch(TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id:     GOOGLE_CLIENT_ID,
-        code:          code,
-        code_verifier: verifier,
-        grant_type:    "authorization_code",
-        redirect_uri:  redirectUri || getRedirectUri(),
-      }),
-    });
-
-    if (!res.ok) { clearTokens(); return null; }
-
-    var data = await res.json();
-    var tokens = loadTokens() || {};
-    tokens.access_token = data.access_token;
-    tokens.expires_at   = Date.now() + data.expires_in * 1000;
-    storeTokens(tokens);
-    return tokens.access_token;
-  }
-
-  async function getAccessToken() {
-    const t = loadTokens();
-    if (!t) return null;
-    if (!isExpired(t)) return t.access_token;
-    return refreshAccessToken();
+    var fresh = await requestToken({ prompt: "" });
+    return fresh ? fresh.access_token : null;
   }
 
   // ── OAuth flow ─────────────────────────────────────────────────
 
-  function getRedirectUri() {
-    return window.location.origin + window.location.pathname;
-  }
-
-  /** Redirect the user to Google's consent screen. */
+  /** Open Google's consent popup. Resolves when the token arrives. */
   async function signIn() {
-    const verifier  = generateVerifier();
-    const challenge = await computeChallenge(verifier);
-    const redirectUri = getRedirectUri();
-    localStorage.setItem(VERIFIER_KEY, verifier);
-    localStorage.setItem(REDIRECT_KEY, redirectUri);
-
-    const params = new URLSearchParams({
-      client_id:             GOOGLE_CLIENT_ID,
-      redirect_uri:          redirectUri,
-      response_type:         "code",
-      scope:                 GOOGLE_SCOPES,
-      code_challenge:        challenge,
-      code_challenge_method: "S256",
-    });
-
-    window.location.href = AUTH_URL + "?" + params.toString();
+    var tokens = await requestToken({ prompt: "consent" });
+    if (tokens && tokens.access_token) {
+      // Fetch email from userinfo
+      try {
+        var res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: "Bearer " + tokens.access_token },
+        });
+        if (res.ok) {
+          var info = await res.json();
+          tokens.email = info.email || null;
+          storeTokens(tokens);
+        }
+      } catch (_) {}
+    }
   }
 
   /**
-   * Call on every page load.  If the URL contains an OAuth code,
-   * exchange it for tokens and clean the URL.
-   * Returns { wasRedirect, ok, error? }.
+   * No-op for GIS flow.  Kept for API compatibility with app.js.
+   * Returns { wasRedirect: false, ok: false } so init() skips the redirect path.
    */
-  async function handleRedirect() {
-    const params = new URLSearchParams(window.location.search);
-
-    // Google may redirect with ?error=... if the user declined
-    if (params.get("error")) {
-      cleanUrl();
-      return { wasRedirect: true, ok: false, error: params.get("error") };
-    }
-
-    const code = params.get("code");
-    if (!code) return { wasRedirect: false, ok: false };
-
-    const verifier    = localStorage.getItem(VERIFIER_KEY);
-    const redirectUri = localStorage.getItem(REDIRECT_KEY);
-    localStorage.removeItem(VERIFIER_KEY);
-    localStorage.removeItem(REDIRECT_KEY);
-    if (!verifier) {
-      cleanUrl();
-      return { wasRedirect: true, ok: false, error: "missing_verifier" };
-    }
-
-    try {
-      const res = await fetch(TOKEN_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id:     GOOGLE_CLIENT_ID,
-          code:          code,
-          code_verifier: verifier,
-          grant_type:    "authorization_code",
-          redirect_uri:  redirectUri || getRedirectUri(),
-        }),
-      });
-
-      if (!res.ok) {
-        var errText = "";
-        try { errText = await res.text(); } catch (_) {}
-        var errCode = "token_exchange";
-        try { errCode = JSON.parse(errText).error || errCode; } catch (_) {}
-        cleanUrl();
-        return { wasRedirect: true, ok: false, error: errCode + "_" + res.status, detail: errText };
-      }
-
-      const data = await res.json();
-      const tokens = {
-        access_token:  data.access_token,
-        refresh_token: data.refresh_token,
-        expires_at:    Date.now() + data.expires_in * 1000,
-        email:         null,
-      };
-
-      // Decode email from the id_token JWT (no verification needed —
-      // it came over HTTPS directly from Google's token endpoint).
-      if (data.id_token) {
-        try {
-          const payload = JSON.parse(atob(data.id_token.split(".")[1]));
-          tokens.email = payload.email || null;
-        } catch (_) {}
-      }
-
-      storeTokens(tokens);
-    } catch (e) {
-      cleanUrl();
-      return { wasRedirect: true, ok: false, error: "network_error" };
-    }
-
-    cleanUrl();
-    return { wasRedirect: true, ok: isSignedIn() };
+  function handleRedirect() {
+    return Promise.resolve({ wasRedirect: false, ok: false });
   }
 
-  function cleanUrl() {
-    const url = new URL(window.location.href);
-    url.search = "";
-    history.replaceState(history.state, "", url.toString());
+  function signOut() {
+    var t = loadTokens();
+    if (t && t.access_token) {
+      google.accounts.oauth2.revoke(t.access_token);
+    }
+    clearTokens();
   }
-
-  function signOut() { clearTokens(); }
 
   function isSignedIn() {
-    const t = loadTokens();
-    return !!(t && (t.access_token || t.refresh_token));
+    var t = loadTokens();
+    return !!(t && t.access_token);
   }
 
   function getEmail() {
-    const t = loadTokens();
+    var t = loadTokens();
     return t ? t.email || null : null;
   }
 
   // ── Google Drive helpers ───────────────────────────────────────
 
-  /** Authenticated GET against Drive REST API (auto-refreshes once). */
   async function driveGet(path, params) {
-    let token = await getAccessToken();
+    var token = await getAccessToken();
     if (!token) throw new Error("not_signed_in");
 
-    const url = new URL(DRIVE_API + path);
-    if (params) for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+    var url = new URL(DRIVE_API + path);
+    if (params) for (var k in params) url.searchParams.set(k, params[k]);
 
-    let res = await fetch(url.toString(), { headers: { Authorization: "Bearer " + token } });
+    var res = await fetch(url.toString(), { headers: { Authorization: "Bearer " + token } });
 
     if (res.status === 401) {
       token = await refreshAccessToken();
@@ -302,35 +160,32 @@ const SyncManager = (function () {
     return res;
   }
 
-  /** Find the sync file in appDataFolder.  Returns fileId or null. */
   async function findSyncFile() {
-    const res = await driveGet("/files", {
+    var res = await driveGet("/files", {
       spaces:   "appDataFolder",
       q:        "name = '" + SYNC_FILE_NAME + "'",
       fields:   "files(id)",
       pageSize: "1",
     });
-    const data = await res.json();
+    var data = await res.json();
     return data.files && data.files.length > 0 ? data.files[0].id : null;
   }
 
-  /** Read the sync file contents. */
   async function readSyncFile(fileId) {
-    const res = await driveGet("/files/" + fileId, { alt: "media" });
+    var res = await driveGet("/files/" + fileId, { alt: "media" });
     return res.json();
   }
 
-  /** Create or update the sync file (multipart upload). */
   async function writeSyncFile(fileId, content) {
-    let token = await getAccessToken();
+    var token = await getAccessToken();
     if (!token) throw new Error("not_signed_in");
 
-    const metadata = fileId
+    var metadata = fileId
       ? {}
       : { name: SYNC_FILE_NAME, parents: ["appDataFolder"] };
 
-    const boundary = "----PajamaSync" + Date.now();
-    const body =
+    var boundary = "----PajamaSync" + Date.now();
+    var body =
       "--" + boundary + "\r\n" +
       "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
       JSON.stringify(metadata) + "\r\n" +
@@ -339,23 +194,23 @@ const SyncManager = (function () {
       JSON.stringify(content) + "\r\n" +
       "--" + boundary + "--";
 
-    const url = fileId
+    var url = fileId
       ? UPLOAD_API + "/files/" + fileId + "?uploadType=multipart"
       : UPLOAD_API + "/files?uploadType=multipart";
-    const method = fileId ? "PATCH" : "POST";
+    var method = fileId ? "PATCH" : "POST";
 
-    const headers = {
+    var headers = {
       Authorization: "Bearer " + token,
       "Content-Type": "multipart/related; boundary=" + boundary,
     };
 
-    let res = await fetch(url, { method, headers, body });
+    var res = await fetch(url, { method: method, headers: headers, body: body });
 
     if (res.status === 401) {
       token = await refreshAccessToken();
       if (!token) throw new Error("auth_expired");
       headers.Authorization = "Bearer " + token;
-      res = await fetch(url, { method, headers, body });
+      res = await fetch(url, { method: method, headers: headers, body: body });
     }
 
     if (!res.ok) throw new Error("drive_upload_" + res.status);
@@ -364,43 +219,28 @@ const SyncManager = (function () {
 
   // ── Sync logic ─────────────────────────────────────────────────
 
-  /**
-   * Merge two entry arrays by completedAt (union, no duplicates).
-   * Entries are keyed by completedAt ISO string.
-   */
   function mergeEntries(a, b) {
-    const map = new Map();
-    for (const e of a) map.set(e.completedAt, e);
-    for (const e of b) { if (!map.has(e.completedAt)) map.set(e.completedAt, e); }
+    var map = new Map();
+    for (var i = 0; i < a.length; i++) map.set(a[i].completedAt, a[i]);
+    for (var j = 0; j < b.length; j++) { if (!map.has(b[j].completedAt)) map.set(b[j].completedAt, b[j]); }
     return Array.from(map.values());
   }
 
-  /**
-   * Sync local ↔ remote.
-   * Returns { ok: true } on success, { ok: false, reason } on failure.
-   */
   async function sync() {
     if (!isSignedIn()) return { ok: false, reason: "not_signed_in" };
 
     try {
-      // 1. Read local
-      const local = WorkoutHistory.exportData();
+      var local = WorkoutHistory.exportData();
 
-      // 2. Read remote (if file exists)
-      let remoteEntries = [];
-      const fileId = await findSyncFile();
+      var remoteEntries = [];
+      var fileId = await findSyncFile();
       if (fileId) {
-        const remote = await readSyncFile(fileId);
+        var remote = await readSyncFile(fileId);
         remoteEntries = (remote && Array.isArray(remote.entries)) ? remote.entries : [];
       }
 
-      // 3. Merge
-      const merged = mergeEntries(local.entries, remoteEntries);
-
-      // 4. Save locally
+      var merged = mergeEntries(local.entries, remoteEntries);
       WorkoutHistory.replaceEntries(merged);
-
-      // 5. Save to Drive
       await writeSyncFile(fileId, { version: local.version, entries: merged });
 
       return { ok: true };

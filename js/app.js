@@ -618,9 +618,16 @@
       await syncAndUpdateUI();
     } else {
       try {
-        els.syncStatus.textContent = "Redirecting to Google\u2026";
+        els.syncStatus.textContent = "Signing in\u2026";
         els.syncStatus.style.display = "block";
         await SyncManager.signIn();
+        if (SyncManager.isSignedIn()) {
+          updateSyncUI();
+          await syncAndUpdateUI();
+        } else {
+          els.syncStatus.textContent = "Sign-in cancelled";
+          els.syncStatus.style.display = "block";
+        }
       } catch (e) {
         els.syncStatus.textContent = "Sign-in failed";
         els.syncStatus.style.display = "block";
