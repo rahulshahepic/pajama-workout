@@ -24,7 +24,7 @@
 
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
-  let settings = { multiplier: 1, tts: false, weeklyGoal: 3 };
+  let settings = { multiplier: 1, tts: false, weeklyGoal: 3, ambient: false };
 
   function loadSettings() {
     try {
@@ -33,6 +33,7 @@
         settings.multiplier = typeof s.multiplier === "number" ? s.multiplier : 1;
         settings.tts = !!s.tts;
         settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
+        settings.ambient = !!s.ambient;
       }
     } catch (_) {}
   }
@@ -86,6 +87,7 @@
       multiplierSlider:  $("multiplier-slider"),
       multiplierLabel:   $("multiplier-label"),
       ttsToggle:         $("tts-toggle"),
+      ambientToggle:     $("ambient-toggle"),
       goalLabel:         $("goal-label"),
       btnGoalDown:       $("btn-goal-down"),
       btnGoalUp:         $("btn-goal-up"),
@@ -180,6 +182,48 @@
 
   function cancelSpeech() {
     if (window.speechSynthesis) speechSynthesis.cancel();
+  }
+
+  // ── Ambient drone (oscillator-based) ────────────────────────
+  var ambientNodes = null;
+
+  function startAmbient() {
+    if (!settings.ambient || ambientNodes) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var gain = audioCtx.createGain();
+      gain.gain.value = 0.03;
+      gain.connect(audioCtx.destination);
+
+      // Layer two detuned oscillators for a warm pad
+      var osc1 = audioCtx.createOscillator();
+      osc1.type = "sine";
+      osc1.frequency.value = 110;  // A2
+      osc1.connect(gain);
+      osc1.start();
+
+      var osc2 = audioCtx.createOscillator();
+      osc2.type = "sine";
+      osc2.frequency.value = 165;  // E3 (a fifth above)
+      osc2.detune.value = -5;
+      osc2.connect(gain);
+      osc2.start();
+
+      ambientNodes = { gain: gain, osc1: osc1, osc2: osc2 };
+    } catch (_) {}
+  }
+
+  function stopAmbient() {
+    if (!ambientNodes) return;
+    try {
+      ambientNodes.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+      var nodes = ambientNodes;
+      setTimeout(function () {
+        nodes.osc1.stop();
+        nodes.osc2.stop();
+      }, 600);
+    } catch (_) {}
+    ambientNodes = null;
   }
 
   // ── Wake Lock (keeps screen on during workout) ──────────────
@@ -308,6 +352,7 @@
     els.phaseListContainer.classList.remove("visible");
     showButtons("done");
     releaseWakeLock();
+    stopAmbient();
 
     // Record to history
     const w = allWorkouts()[currentWorkoutId];
@@ -439,6 +484,7 @@
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     requestWakeLock();
+    startAmbient();
   }
 
   function pause() {
@@ -446,6 +492,7 @@
     clearInterval(interval);
     showButtons("paused");
     releaseWakeLock();
+    stopAmbient();
   }
 
   function resume() {
@@ -454,11 +501,13 @@
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     requestWakeLock();
+    startAmbient();
   }
 
   function reset() {
     clearInterval(interval);
     cancelSpeech();
+    stopAmbient();
     state = "idle";
     countdownLeft = 0;
     releaseWakeLock();
@@ -1187,6 +1236,7 @@
     els.multiplierSlider.value = settings.multiplier;
     els.multiplierLabel.innerHTML = fmtMultiplier(settings.multiplier);
     els.ttsToggle.checked = settings.tts;
+    els.ambientToggle.checked = settings.ambient;
     els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
     els.settingsBackdrop.classList.add("open");
     els.settingsPanel.classList.add("open");
@@ -1319,6 +1369,11 @@
 
     els.ttsToggle.addEventListener("change", function () {
       settings.tts = this.checked;
+      saveSettings();
+    });
+
+    els.ambientToggle.addEventListener("change", function () {
+      settings.ambient = this.checked;
       saveSettings();
     });
 
