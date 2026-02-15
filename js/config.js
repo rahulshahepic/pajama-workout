@@ -283,7 +283,31 @@ const SOUNDS = {
   tick:       [550,  80, 1],   // last 3 seconds warning
 };
 
+/**
+ * Exercise substitutions — keyed by exercise name.
+ * Each value is an array of { name, hint } alternatives.
+ * Only "work" and "yoga" types show a swap option on the Ready screen.
+ */
+const SUBSTITUTIONS = {
+  "Squats":             [{ name: "Wall Sit",           hint: "Lean against a wall, slide down until thighs are parallel. Hold the position. Great if lunges hurt your knees." },
+                         { name: "Glute Bridges",      hint: "Lie on your back, feet flat, push hips up and squeeze glutes at the top. Lower and repeat." }],
+  "Push-ups":           [{ name: "Incline Push-ups",   hint: "Hands on a counter or sturdy chair. Same movement, less load. Keep your body straight." },
+                         { name: "Knee Push-ups",      hint: "Drop to your knees, cross your ankles. Same upper body movement, easier on the shoulders." }],
+  "Dead Bugs":          [{ name: "Bird Dogs",          hint: "On all fours, extend opposite arm and leg, hold briefly, switch. Trains the same core stability." },
+                         { name: "Hollow Hold",        hint: "Lie on your back, arms overhead, legs straight and slightly off the floor. Hold and breathe." }],
+  "Reverse Lunges":     [{ name: "Step-ups",           hint: "Step up onto a sturdy chair or stair, alternate legs. Easier on the knees than lunges." },
+                         { name: "Bodyweight Squats",  hint: "Feet shoulder-width, sit back and down. A simpler movement if lunges are tricky." }],
+  "Plank":              [{ name: "Knee Plank",         hint: "Same as a plank but knees on the floor. Keep your core tight and body straight from head to knees." },
+                         { name: "Dead Bug Hold",      hint: "Lie on your back, arms up, knees at 90\u00B0. Hold this position while pressing your lower back flat." }],
+  "Jumping Jacks":      [{ name: "March in Place",     hint: "High knees, pump your arms. Same cardio effect, no jumping. Easier on the joints." },
+                         { name: "Step Jacks",         hint: "Same arm motion as jumping jacks but step one foot out at a time instead of jumping." }],
+  "Mountain Climbers":  [{ name: "Standing Knee Drives", hint: "Stand tall, drive one knee up toward your chest, alternate. Same cardio, no plank position needed." },
+                         { name: "Slow Climbers",      hint: "Same as mountain climbers but at half speed. Focus on control, not pace." }],
+  "Bodyweight Squats":  [{ name: "Chair Squats",       hint: "Squat down to touch a chair seat, then stand back up. The chair gives you a depth target and safety net." },
+                         { name: "Wall Sit",           hint: "Back against the wall, slide to a 90\u00B0 seat. Hold. Burns in a different way." }],
+};
+
 // Allow Node.js test imports while keeping browser globals working
 if (typeof module !== "undefined") {
-  module.exports = { APP_VERSION, WORKOUTS, CATEGORIES, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
+  module.exports = { APP_VERSION, WORKOUTS, CATEGORIES, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, SUBSTITUTIONS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
 }

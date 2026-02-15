@@ -88,6 +88,12 @@
       sessionMultLabel:  $("session-mult-label"),
       btnMultDown:       $("btn-mult-down"),
       btnMultUp:         $("btn-mult-up"),
+      phaseListContainer:$("phase-list-container"),
+      phaseList:         $("phase-list"),
+      swapBackdrop:      $("swap-backdrop"),
+      swapPanel:         $("swap-panel"),
+      swapCurrent:       $("swap-current"),
+      swapOptions:       $("swap-options"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -283,6 +289,7 @@
     els.progressFill.style.background = DONE_THEME.accent;
     els.upnextContainer.style.display = "none";
     els.sessionMultiplier.classList.remove("visible");
+    els.phaseListContainer.classList.remove("visible");
     showButtons("done");
     releaseWakeLock();
 
@@ -349,6 +356,7 @@
     els.timerContainer.style.display = "block";
     els.doneCheck.style.display      = "none";
     els.sessionMultiplier.classList.remove("visible");
+    els.phaseListContainer.classList.remove("visible");
 
     const cdSecs = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 0;
     if (cdSecs > 0) {
@@ -519,6 +527,74 @@
     }
   }
 
+  // ── Phase list & swap (Ready screen) ──────────────────────
+  var swapPhaseIndex = -1;   // which phase is being swapped
+
+  function renderPhaseList() {
+    els.phaseList.innerHTML = "";
+    var subs = typeof SUBSTITUTIONS !== "undefined" ? SUBSTITUTIONS : {};
+    for (var i = 0; i < phases.length; i++) {
+      var p = phases[i];
+      var div = document.createElement("div");
+      div.className = "phase-list-item";
+      if (p.type === "rest") {
+        div.classList.add("is-rest");
+        div.innerHTML = '<span>rest</span><span class="phase-dur">' + p.duration + 's</span>';
+      } else {
+        var canSwap = !!subs[p.name];
+        if (canSwap) div.classList.add("swappable");
+        div.innerHTML = '<span>' + p.name + '</span><span class="phase-dur">' + p.duration + 's</span>';
+        if (canSwap) {
+          (function (idx) {
+            div.addEventListener("click", function () { openSwap(idx); });
+          })(i);
+        }
+      }
+      els.phaseList.appendChild(div);
+    }
+  }
+
+  function openSwap(idx) {
+    var subs = typeof SUBSTITUTIONS !== "undefined" ? SUBSTITUTIONS : {};
+    var p = phases[idx];
+    var options = subs[p.name];
+    if (!options || !options.length) return;
+    swapPhaseIndex = idx;
+    els.swapCurrent.textContent = "Currently: " + p.name;
+    els.swapOptions.innerHTML = "";
+    for (var j = 0; j < options.length; j++) {
+      var opt = options[j];
+      var div = document.createElement("div");
+      div.className = "swap-option";
+      div.innerHTML = '<div class="swap-option-name">' + opt.name + '</div>' +
+        '<div class="swap-option-hint">' + opt.hint + '</div>';
+      (function (sub) {
+        div.addEventListener("click", function () { doSwap(sub); });
+      })(opt);
+      els.swapOptions.appendChild(div);
+    }
+    els.swapBackdrop.classList.add("open");
+    els.swapPanel.classList.add("open");
+  }
+
+  function closeSwap() {
+    els.swapBackdrop.classList.remove("open");
+    els.swapPanel.classList.remove("open");
+    swapPhaseIndex = -1;
+  }
+
+  function doSwap(sub) {
+    if (swapPhaseIndex < 0 || swapPhaseIndex >= phases.length) return;
+    phases[swapPhaseIndex].name = sub.name;
+    phases[swapPhaseIndex].hint = sub.hint;
+    closeSwap();
+    renderPhaseList();
+    // If we swapped the first exercise, update the Ready screen name display
+    if (swapPhaseIndex === 0) {
+      els.exerciseName.textContent = WORKOUTS[currentWorkoutId].title;
+    }
+  }
+
   /** Rebuild phases from the original workout using sessionMultiplier. */
   function applySessionMultiplier() {
     if (!currentWorkoutId) return;
@@ -571,6 +647,8 @@
     els.upnextContainer.style.display = "none";
     els.sessionMultiplier.classList.add("visible");
     els.sessionMultLabel.innerHTML = fmtMultiplier(m);
+    els.phaseListContainer.classList.add("visible");
+    renderPhaseList();
     showButtons("idle");
   }
 
@@ -866,6 +944,9 @@
       WorkoutHistory.clear();
       renderHistory();
     });
+
+    // ── Swap sheet ───────────────────────────────────────────
+    els.swapBackdrop.addEventListener("click", closeSwap);
 
     // ── Per-session multiplier (+/−) ──────────────────────────
     els.btnMultDown.addEventListener("click", function () {
