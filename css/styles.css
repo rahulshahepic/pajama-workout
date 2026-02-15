@@ -231,6 +231,20 @@ body {
 }
 #picker-screen.active { display: flex; }
 
+#workout-list {
+  width: 100%;
+  max-height: 55vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+}
+#workout-list::-webkit-scrollbar { width: 3px; }
+#workout-list::-webkit-scrollbar-track { background: transparent; }
+#workout-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+}
+
 #picker-title {
   font-size: 26px;
   font-weight: 700;
@@ -247,8 +261,8 @@ body {
 
 .workout-card {
   width: 100%;
-  padding: 20px 24px;
-  margin-bottom: 12px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
   border-radius: 12px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);

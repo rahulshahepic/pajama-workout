@@ -90,6 +90,45 @@ const WORKOUTS = {
     ],
   },
 
+  /* ── Lower Back & Hips — mobility and relief ────────────────── */
+  "lower-back-hips": {
+    id: "lower-back-hips",
+    title: "Lower Back & Hips",
+    subtitle: "~10 min to loosen up the whole posterior chain",
+    phases: [
+      // ─── Warm-up ───
+      { name: "Cat-Cow",                  type: "work",    duration: 40, hint: "On all fours — arch on inhale, round on exhale, nice and slow" },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Stay on all fours" },
+      { name: "Pelvic Tilts",             type: "work",    duration: 30, hint: "On your back, flatten low back to floor then release — find the rhythm" },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Knees bent, feet flat" },
+
+      // ─── Hip openers ───
+      { name: "90/90 Stretch — L",        type: "stretch", duration: 30, hint: "Front leg 90°, back leg 90° — sit tall, lean gently forward" },
+      { name: "90/90 Stretch — R",        type: "stretch", duration: 30, hint: "Same thing, other side — keep both sit bones down" },
+      { name: "Pigeon Pose — L",          type: "stretch", duration: 35, hint: "Front shin across mat, back leg long — fold forward if you can" },
+      { name: "Pigeon Pose — R",          type: "stretch", duration: 35, hint: "Breathe into the deep hip — don't force it" },
+      { name: "Rest",                     type: "rest",    duration: 15, hint: "Shake out the legs" },
+
+      // ─── Glute & hamstring ───
+      { name: "Figure Four — L",          type: "stretch", duration: 30, hint: "On your back, ankle over knee, pull thigh toward you" },
+      { name: "Figure Four — R",          type: "stretch", duration: 30, hint: "Keep head down, relax the shoulders" },
+      { name: "Hamstring Stretch — L",    type: "stretch", duration: 30, hint: "Leg up, loop a towel or grab behind the thigh, straighten gently" },
+      { name: "Hamstring Stretch — R",    type: "stretch", duration: 30, hint: "Flex the foot, micro-bend at the knee is fine" },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Quick breather" },
+
+      // ─── Low back release ───
+      { name: "Knees-to-Chest",           type: "stretch", duration: 30, hint: "Hug both knees in, rock gently side to side" },
+      { name: "Spinal Twist — L",         type: "stretch", duration: 30, hint: "Knees fall left, arms out wide, look right" },
+      { name: "Spinal Twist — R",         type: "stretch", duration: 30, hint: "Let gravity pull the knees down — don't force" },
+      { name: "Cobra / Sphinx",           type: "stretch", duration: 30, hint: "Face down, press up on forearms, open the front body" },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Almost done" },
+
+      // ─── Cool-down ───
+      { name: "Happy Baby",               type: "stretch", duration: 30, hint: "Grab outer feet, pull knees wide toward armpits, rock gently" },
+      { name: "Child's Pose",             type: "stretch", duration: 45, hint: "Knees wide, arms long, melt into the floor. You showed up." },
+    ],
+  },
+
   /* ── Quick 5 min — no stretches ─────────────────────────────── */
   "quick-five": {
     id: "quick-five",
