@@ -320,6 +320,9 @@
       multiplier:      sessionMultiplier,
     });
 
+    // Check if we should offer to hide frequently-skipped exercises
+    checkHidePrompt();
+
     // Sync to cloud (fire-and-forget)
     if (SyncManager.isSignedIn()) SyncManager.sync().catch(() => {});
   }
@@ -474,6 +477,8 @@
     if (state === "countdown") { skipCountdown(); return; }
     if (state !== "running" && state !== "paused") return;
     cancelSpeech();
+    // Record the skip for memory
+    recordSkip(phases[phaseIndex].name);
     // consume remaining time of current phase
     elapsed += timeLeft;
     const next = phaseIndex + 1;
@@ -614,6 +619,90 @@
     }
   }
 
+  // ── Skip memory (localStorage) ─────────────────────────────
+  var SKIP_KEY = "pajama-skip-counts";
+  var HIDDEN_KEY = "pajama-hidden-exercises";
+  var skipCounts = {};   // { "exerciseName": count }
+  var hiddenExercises = {};   // { "workoutId:exerciseName": true }
+  var SKIP_THRESHOLD = 3;
+
+  function loadSkipData() {
+    try {
+      var sc = JSON.parse(localStorage.getItem(SKIP_KEY));
+      if (sc && typeof sc === "object") skipCounts = sc;
+    } catch (_) {}
+    try {
+      var he = JSON.parse(localStorage.getItem(HIDDEN_KEY));
+      if (he && typeof he === "object") hiddenExercises = he;
+    } catch (_) {}
+  }
+
+  function saveSkipCounts() {
+    try { localStorage.setItem(SKIP_KEY, JSON.stringify(skipCounts)); } catch (_) {}
+  }
+
+  function saveHiddenExercises() {
+    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenExercises)); } catch (_) {}
+  }
+
+  function recordSkip(exerciseName) {
+    if (!exerciseName || exerciseName === "Rest") return;
+    skipCounts[exerciseName] = (skipCounts[exerciseName] || 0) + 1;
+    saveSkipCounts();
+
+    if (skipCounts[exerciseName] === SKIP_THRESHOLD && currentWorkoutId) {
+      var key = currentWorkoutId + ":" + exerciseName;
+      if (!hiddenExercises[key]) {
+        // Show a subtle prompt after the workout (don't interrupt)
+        pendingHidePrompt = { key: key, name: exerciseName };
+      }
+    }
+  }
+
+  var pendingHidePrompt = null;
+
+  function checkHidePrompt() {
+    if (!pendingHidePrompt) return;
+    var p = pendingHidePrompt;
+    pendingHidePrompt = null;
+    // Render a small dismissible banner at the bottom of done screen
+    var banner = document.createElement("div");
+    banner.className = "hide-prompt";
+    banner.innerHTML =
+      '<span>You skip <strong>' + p.name + '</strong> often. Hide it?</span>' +
+      '<button class="hide-prompt-yes">HIDE</button>' +
+      '<button class="hide-prompt-no">KEEP</button>';
+    banner.querySelector(".hide-prompt-yes").addEventListener("click", function () {
+      hiddenExercises[p.key] = true;
+      saveHiddenExercises();
+      banner.remove();
+    });
+    banner.querySelector(".hide-prompt-no").addEventListener("click", function () {
+      // Reset count so we don't keep asking
+      skipCounts[p.name] = 0;
+      saveSkipCounts();
+      banner.remove();
+    });
+    els.timerScreen.appendChild(banner);
+  }
+
+  /** Filter out hidden exercises for a given workout. */
+  function filterHidden(workoutId, phasesArr) {
+    return phasesArr.filter(function (p) {
+      if (p.type === "rest") return true;
+      var key = workoutId + ":" + p.name;
+      return !hiddenExercises[key];
+    }).filter(function (p, i, arr) {
+      // Remove consecutive rests (orphaned by hiding the exercise before them)
+      if (p.type === "rest" && i > 0 && arr[i - 1].type === "rest") return false;
+      // Remove trailing rest
+      if (p.type === "rest" && i === arr.length - 1) return false;
+      // Remove leading rest
+      if (p.type === "rest" && i === 0) return false;
+      return true;
+    });
+  }
+
   // ── Custom workouts (localStorage) ──────────────────────────
   var CUSTOM_KEY = "pajama-custom-workouts";
   var customWorkouts = {};
@@ -747,7 +836,7 @@
     if (!currentWorkoutId) return;
     var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
-    phases = w.phases.map(function (p) {
+    phases = filterHidden(currentWorkoutId, w.phases).map(function (p) {
       return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
     });
     totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
@@ -764,7 +853,8 @@
     sessionMultiplier = settings.multiplier;
     const w = allWorkouts()[id];
     var m = sessionMultiplier;
-    phases = w.phases.map(function (p) {
+    var filtered = filterHidden(id, w.phases);
+    phases = filtered.map(function (p) {
       return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
     });
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
@@ -1165,6 +1255,7 @@
     history.replaceState({ screen: "picker" }, "");
 
     loadCustomWorkouts();
+    loadSkipData();
 
     // If only one workout, skip picker and go straight to it
     var workoutKeys = Object.keys(allWorkouts());
