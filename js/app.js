@@ -577,21 +577,28 @@
   }
 
   // ── Sync UI ────────────────────────────────────────────────
+  function syncAvailable() {
+    return typeof SyncManager !== "undefined";
+  }
+
   function updateSyncUI() {
+    if (!syncAvailable()) {
+      els.btnSync.style.display = "none";
+      return;
+    }
     if (SyncManager.isSignedIn()) {
       const email = SyncManager.getEmail();
       els.btnSync.textContent = "SIGN OUT";
-      els.btnSync.style.display = "inline-block";
       els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
       els.syncStatus.style.display = "block";
     } else {
       els.btnSync.textContent = "SYNC";
-      els.btnSync.style.display = "inline-block";
       els.syncStatus.style.display = "none";
     }
   }
 
   async function syncAndUpdateUI() {
+    if (!syncAvailable()) return;
     els.syncStatus.textContent = "Syncing\u2026";
     els.syncStatus.style.display = "block";
     const result = await SyncManager.sync();
@@ -607,6 +614,7 @@
   }
 
   function handleSyncButton() {
+    if (!syncAvailable()) return;
     if (SyncManager.isSignedIn()) {
       SyncManager.signOut();
       updateSyncUI();
@@ -658,10 +666,8 @@
   async function init() {
     cacheDOM();
 
-    // Handle OAuth redirect (if returning from Google consent screen)
-    const wasRedirect = await SyncManager.handleRedirect();
-
-    // Wire buttons
+    // Wire buttons (must happen synchronously — never after an await
+    // that could throw and abort init)
     els.btnStart.addEventListener("click", start);
     els.btnPause.addEventListener("click", pause);
     els.btnResume.addEventListener("click", resume);
@@ -687,10 +693,15 @@
       showPicker(false);
     }
 
-    // Sync: on fresh sign-in or on app open when already signed in
-    updateSyncUI();
-    if (wasRedirect || SyncManager.isSignedIn()) {
-      syncAndUpdateUI();
+    // Sync setup (wrapped in try/catch — sync issues must never break the app)
+    try {
+      const wasRedirect = await SyncManager.handleRedirect();
+      updateSyncUI();
+      if (wasRedirect || SyncManager.isSignedIn()) {
+        syncAndUpdateUI();
+      }
+    } catch (_) {
+      updateSyncUI();
     }
   }
 
