@@ -20,6 +20,7 @@
   let audioCtx     = null;
   let wakeLock     = null;
   let currentWorkoutId = null;
+  let sessionMultiplier = 1;      // per-workout override (defaults from settings)
 
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
@@ -83,6 +84,10 @@
       multiplierLabel:   $("multiplier-label"),
       ttsToggle:         $("tts-toggle"),
       syncStatusLine:    $("sync-status-line"),
+      sessionMultiplier: $("session-multiplier"),
+      sessionMultLabel:  $("session-mult-label"),
+      btnMultDown:       $("btn-mult-down"),
+      btnMultUp:         $("btn-mult-up"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -269,6 +274,7 @@
     els.progressFill.style.width      = "100%";
     els.progressFill.style.background = DONE_THEME.accent;
     els.upnextContainer.style.display = "none";
+    els.sessionMultiplier.classList.remove("visible");
     showButtons("done");
     releaseWakeLock();
 
@@ -280,7 +286,7 @@
       durationSecs:    totalTime,
       phasesCompleted: phases.length,
       phasesTotal:     phases.length,
-      multiplier:      settings.multiplier,
+      multiplier:      sessionMultiplier,
     });
 
     // Sync to cloud (fire-and-forget)
@@ -334,6 +340,7 @@
     elapsed    = 0;
     els.timerContainer.style.display = "block";
     els.doneCheck.style.display      = "none";
+    els.sessionMultiplier.classList.remove("visible");
 
     const cdSecs = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 0;
     if (cdSecs > 0) {
@@ -498,10 +505,28 @@
     }
   }
 
+  /** Rebuild phases from the original workout using sessionMultiplier. */
+  function applySessionMultiplier() {
+    if (!currentWorkoutId) return;
+    var w = WORKOUTS[currentWorkoutId];
+    var m = sessionMultiplier;
+    phases = w.phases.map(function (p) {
+      return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
+    });
+    totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
+    timeLeft = phases[0].duration;
+
+    // Update ready screen display
+    els.timerDisplay.textContent = fmt(phases[0].duration);
+    els.counterLabel.textContent = summarise(w.phases, m);
+    els.sessionMultLabel.innerHTML = fmtMultiplier(m);
+  }
+
   function selectWorkout(id, push) {
     currentWorkoutId = id;
+    sessionMultiplier = settings.multiplier;
     const w = WORKOUTS[id];
-    var m = settings.multiplier;
+    var m = sessionMultiplier;
     phases = w.phases.map(function (p) {
       return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
     });
@@ -530,6 +555,8 @@
     els.exerciseName.textContent = w.title;
     els.exerciseHint.textContent = w.subtitle;
     els.upnextContainer.style.display = "none";
+    els.sessionMultiplier.classList.add("visible");
+    els.sessionMultLabel.innerHTML = fmtMultiplier(m);
     showButtons("idle");
   }
 
@@ -824,6 +851,18 @@
     els.btnClearHistory.addEventListener("click", function () {
       WorkoutHistory.clear();
       renderHistory();
+    });
+
+    // ── Per-session multiplier (+/−) ──────────────────────────
+    els.btnMultDown.addEventListener("click", function () {
+      if (state !== "idle" || !currentWorkoutId) return;
+      sessionMultiplier = Math.max(0.5, +(sessionMultiplier - 0.25).toFixed(2));
+      applySessionMultiplier();
+    });
+    els.btnMultUp.addEventListener("click", function () {
+      if (state !== "idle" || !currentWorkoutId) return;
+      sessionMultiplier = Math.min(3, +(sessionMultiplier + 0.25).toFixed(2));
+      applySessionMultiplier();
     });
 
     // ── Settings panel ────────────────────────────────────────
