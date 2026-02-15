@@ -31,6 +31,7 @@ const CATEGORIES = {
   mobility: { label: "Mobility",  color: "#A8D08D" },
   yoga:     { label: "Yoga",      color: "#E8A44A" },
   quick:    { label: "Quick",     color: "#8B85FF" },
+  custom:   { label: "Custom",    color: "#FF8C69" },
 };
 
 const WORKOUTS = {

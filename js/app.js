@@ -89,6 +89,16 @@
       sessionMultLabel:  $("session-mult-label"),
       btnMultDown:       $("btn-mult-down"),
       btnMultUp:         $("btn-mult-up"),
+      builderScreen:     $("builder-screen"),
+      btnBuilderBack:    $("btn-builder-back"),
+      btnCreate:         $("btn-create"),
+      builderName:       $("builder-name"),
+      builderPhases:     $("builder-phases"),
+      btnAddWork:        $("btn-add-work"),
+      btnAddRest:        $("btn-add-rest"),
+      btnAddStretch:     $("btn-add-stretch"),
+      btnAddYoga:        $("btn-add-yoga"),
+      btnSaveWorkout:    $("btn-save-workout"),
       phaseListContainer:$("phase-list-container"),
       phaseList:         $("phase-list"),
       swapBackdrop:      $("swap-backdrop"),
@@ -295,7 +305,7 @@
     releaseWakeLock();
 
     // Record to history
-    const w = WORKOUTS[currentWorkoutId];
+    const w = allWorkouts()[currentWorkoutId];
     WorkoutHistory.record({
       workoutId:       currentWorkoutId,
       title:           w.title,
@@ -487,6 +497,7 @@
     els.pickerScreen.classList.add("active");
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
+    els.builderScreen.classList.remove("active");
 
     applyTheme("idle");
     els.progressFill.style.width = "0%";
@@ -501,14 +512,15 @@
     const container = $("workout-list");
     container.innerHTML = "";
     var m = settings.multiplier;
+    var all = allWorkouts();
 
     // Sort by duration (shortest first)
-    const sorted = Object.keys(WORKOUTS).sort(
-      (a, b) => workoutDuration(WORKOUTS[a], m) - workoutDuration(WORKOUTS[b], m)
+    const sorted = Object.keys(all).sort(
+      (a, b) => workoutDuration(all[a], m) - workoutDuration(all[b], m)
     );
 
     for (const key of sorted) {
-      const w    = WORKOUTS[key];
+      const w    = all[key];
       const card = document.createElement("div");
       card.className = "workout-card";
       var cat = (typeof CATEGORIES !== "undefined" && w.category && CATEGORIES[w.category]) ? CATEGORIES[w.category] : null;
@@ -596,10 +608,138 @@
     }
   }
 
+  // ── Custom workouts (localStorage) ──────────────────────────
+  var CUSTOM_KEY = "pajama-custom-workouts";
+  var customWorkouts = {};
+
+  function loadCustomWorkouts() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(CUSTOM_KEY));
+      if (raw && typeof raw === "object") customWorkouts = raw;
+    } catch (_) {}
+  }
+
+  function saveCustomWorkouts() {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(customWorkouts)); } catch (_) {}
+  }
+
+  /** Merge built-in + custom workouts for the picker. */
+  function allWorkouts() {
+    var merged = {};
+    for (var k in WORKOUTS) merged[k] = WORKOUTS[k];
+    for (var c in customWorkouts) merged[c] = customWorkouts[c];
+    return merged;
+  }
+
+  // ── Builder screen ──────────────────────────────────────────
+  var builderPhaseList = [];
+  var editingWorkoutId = null;  // null = new, string = editing existing custom
+
+  function showBuilder(push, editId) {
+    editingWorkoutId = editId || null;
+    els.pickerScreen.classList.remove("active");
+    els.timerScreen.classList.remove("active");
+    els.historyScreen.classList.remove("active");
+    els.builderScreen.classList.add("active");
+    if (push !== false) history.pushState({ screen: "builder" }, "");
+
+    if (editId && customWorkouts[editId]) {
+      var w = customWorkouts[editId];
+      els.builderName.value = w.title;
+      builderPhaseList = w.phases.map(function (p) {
+        return { name: p.name, type: p.type, duration: p.duration, hint: p.hint || "" };
+      });
+    } else {
+      els.builderName.value = "";
+      builderPhaseList = [];
+    }
+    renderBuilderPhases();
+  }
+
+  function hideBuilder() {
+    history.back();
+  }
+
+  function addBuilderPhase(type) {
+    var defaults = { work: { name: "Exercise", duration: 40 }, rest: { name: "Rest", duration: 20 }, stretch: { name: "Stretch", duration: 30 }, yoga: { name: "Pose", duration: 30 } };
+    var d = defaults[type] || defaults.work;
+    builderPhaseList.push({ name: d.name, type: type, duration: d.duration, hint: "" });
+    renderBuilderPhases();
+  }
+
+  function removeBuilderPhase(idx) {
+    builderPhaseList.splice(idx, 1);
+    renderBuilderPhases();
+  }
+
+  function renderBuilderPhases() {
+    els.builderPhases.innerHTML = "";
+    for (var i = 0; i < builderPhaseList.length; i++) {
+      var p = builderPhaseList[i];
+      var row = document.createElement("div");
+      row.className = "builder-phase";
+      row.innerHTML =
+        '<span class="builder-phase-type type-' + p.type + '">' + p.type + '</span>' +
+        '<input type="text" class="builder-phase-name" value="' + escHtml(p.name) + '" data-idx="' + i + '">' +
+        '<input type="number" class="builder-phase-dur" value="' + p.duration + '" min="5" max="300" data-idx="' + i + '">s' +
+        '<button class="builder-phase-remove" data-idx="' + i + '">&times;</button>';
+      els.builderPhases.appendChild(row);
+    }
+    // Wire inline events
+    els.builderPhases.querySelectorAll(".builder-phase-name").forEach(function (el) {
+      el.addEventListener("change", function () {
+        builderPhaseList[+this.dataset.idx].name = this.value;
+      });
+    });
+    els.builderPhases.querySelectorAll(".builder-phase-dur").forEach(function (el) {
+      el.addEventListener("change", function () {
+        builderPhaseList[+this.dataset.idx].duration = Math.max(5, Math.min(300, +this.value || 30));
+      });
+    });
+    els.builderPhases.querySelectorAll(".builder-phase-remove").forEach(function (el) {
+      el.addEventListener("click", function () {
+        removeBuilderPhase(+this.dataset.idx);
+      });
+    });
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  }
+
+  function saveCustomWorkout() {
+    var title = els.builderName.value.trim();
+    if (!title) { els.builderName.focus(); return; }
+    if (builderPhaseList.length === 0) return;
+
+    // Sync any unsaved inline edits
+    els.builderPhases.querySelectorAll(".builder-phase-name").forEach(function (el) {
+      builderPhaseList[+el.dataset.idx].name = el.value;
+    });
+    els.builderPhases.querySelectorAll(".builder-phase-dur").forEach(function (el) {
+      builderPhaseList[+el.dataset.idx].duration = Math.max(5, Math.min(300, +el.value || 30));
+    });
+
+    var id = editingWorkoutId || "custom-" + Date.now();
+    customWorkouts[id] = {
+      id: id,
+      title: title,
+      category: "custom",
+      subtitle: "Custom workout",
+      description: "",
+      custom: true,
+      phases: builderPhaseList.map(function (p) {
+        return { name: p.name, type: p.type, duration: p.duration, hint: p.hint || "" };
+      }),
+    };
+    saveCustomWorkouts();
+    hideBuilder();
+  }
+
   /** Rebuild phases from the original workout using sessionMultiplier. */
   function applySessionMultiplier() {
     if (!currentWorkoutId) return;
-    var w = WORKOUTS[currentWorkoutId];
+    var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
     phases = w.phases.map(function (p) {
       return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
@@ -616,7 +756,7 @@
   function selectWorkout(id, push) {
     currentWorkoutId = id;
     sessionMultiplier = settings.multiplier;
-    const w = WORKOUTS[id];
+    const w = allWorkouts()[id];
     var m = sessionMultiplier;
     phases = w.phases.map(function (p) {
       return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
@@ -625,6 +765,7 @@
 
     els.pickerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
+    els.builderScreen.classList.remove("active");
     els.timerScreen.classList.add("active");
 
     // set up initial state
@@ -657,6 +798,7 @@
   function showHistory(push) {
     els.pickerScreen.classList.remove("active");
     els.timerScreen.classList.remove("active");
+    els.builderScreen.classList.remove("active");
     els.historyScreen.classList.add("active");
     if (push !== false) history.pushState({ screen: "history" }, "");
     renderHistory();
@@ -972,10 +1114,12 @@
     const s = e.state;
     if (!s || s.screen === "picker") {
       showPicker(false);
-    } else if (s.screen === "workout" && WORKOUTS[s.id]) {
+    } else if (s.screen === "workout" && allWorkouts()[s.id]) {
       selectWorkout(s.id, false);
     } else if (s.screen === "history") {
       showHistory(false);
+    } else if (s.screen === "builder") {
+      showBuilder(false);
     } else {
       showPicker(false);
     }
@@ -990,8 +1134,10 @@
     // Seed the initial history entry so there's something to go "back" to
     history.replaceState({ screen: "picker" }, "");
 
+    loadCustomWorkouts();
+
     // If only one workout, skip picker and go straight to it
-    var workoutKeys = Object.keys(WORKOUTS);
+    var workoutKeys = Object.keys(allWorkouts());
     if (workoutKeys.length === 1) {
       selectWorkout(workoutKeys[0]);
     } else {
@@ -1014,6 +1160,15 @@
 
     // ── Swap sheet ───────────────────────────────────────────
     els.swapBackdrop.addEventListener("click", closeSwap);
+
+    // ── Builder ───────────────────────────────────────────────
+    els.btnCreate.addEventListener("click", function () { showBuilder(true); });
+    els.btnBuilderBack.addEventListener("click", hideBuilder);
+    els.btnAddWork.addEventListener("click", function () { addBuilderPhase("work"); });
+    els.btnAddRest.addEventListener("click", function () { addBuilderPhase("rest"); });
+    els.btnAddStretch.addEventListener("click", function () { addBuilderPhase("stretch"); });
+    els.btnAddYoga.addEventListener("click", function () { addBuilderPhase("yoga"); });
+    els.btnSaveWorkout.addEventListener("click", saveCustomWorkout);
 
     // ── Per-session multiplier (+/−) ──────────────────────────
     els.btnMultDown.addEventListener("click", function () {

@@ -44,6 +44,7 @@
     <div id="workout-list"></div>
     <div id="picker-actions">
       <button class="btn btn-secondary btn-history" id="btn-history">HISTORY</button>
+      <button class="btn btn-secondary btn-create" id="btn-create">+ CREATE</button>
     </div>
   </div>
 
@@ -96,6 +97,23 @@
     <div id="history-heatmap"></div>
     <div id="history-list"></div>
     <button class="btn btn-secondary btn-clear-history" id="btn-clear-history" style="display:none">CLEAR HISTORY</button>
+  </div>
+
+  <!-- ═══ Builder screen ═══ -->
+  <div id="builder-screen">
+    <div id="builder-header">
+      <button class="btn btn-secondary btn-back" id="btn-builder-back">&larr; BACK</button>
+      <div id="builder-title">New Workout</div>
+    </div>
+    <input type="text" id="builder-name" class="builder-input" placeholder="Workout name" maxlength="40">
+    <div id="builder-phases"></div>
+    <div id="builder-add-row">
+      <button class="btn-builder-add" id="btn-add-work">+ Exercise</button>
+      <button class="btn-builder-add" id="btn-add-rest">+ Rest</button>
+      <button class="btn-builder-add" id="btn-add-stretch">+ Stretch</button>
+      <button class="btn-builder-add btn-add-yoga" id="btn-add-yoga">+ Yoga</button>
+    </div>
+    <button class="btn btn-primary" id="btn-save-workout" style="margin-top:20px;width:100%">SAVE WORKOUT</button>
   </div>
 
   <!-- ═══ Timer screen ═══ -->
