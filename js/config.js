@@ -129,6 +129,21 @@ const WORKOUTS = {
     ],
   },
 
+  /* ── Keyboard Warrior — quick desk reset ─────────────────────── */
+  "keyboard-warrior": {
+    id: "keyboard-warrior",
+    title: "Keyboard Warrior",
+    subtitle: "1 min neck, shoulders & arms — no excuses",
+    phases: [
+      { name: "Neck Tilt — L",         type: "stretch", duration: 10, hint: "Ear toward left shoulder, gentle pull with left hand" },
+      { name: "Neck Tilt — R",         type: "stretch", duration: 10, hint: "Other side — let the weight of your hand do the work" },
+      { name: "Chin Tucks",            type: "work",    duration: 10, hint: "Pull chin straight back, make a double chin — hold 2s, repeat" },
+      { name: "Shoulder Shrugs",       type: "work",    duration: 10, hint: "Shoulders up to ears, hold 2s, drop — repeat" },
+      { name: "Wrist Circles",         type: "work",    duration: 10, hint: "Interlace fingers, slow circles both directions" },
+      { name: "Chest Opener",          type: "stretch", duration: 10, hint: "Hands behind head, squeeze shoulder blades, open elbows wide" },
+    ],
+  },
+
   /* ── Quick 5 min — no stretches ─────────────────────────────── */
   "quick-five": {
     id: "quick-five",
@@ -147,6 +162,9 @@ const WORKOUTS = {
     ],
   },
 };
+
+/** Seconds to count down before the first phase starts (0 to disable) */
+const COUNTDOWN_SECS = 10;
 
 /** Which workout to load by default */
 const DEFAULT_WORKOUT = "pajama-classic";
