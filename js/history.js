@@ -110,6 +110,7 @@ const WorkoutHistory = (function () {
       durationSecs:    e.durationSecs    || 0,
       phasesCompleted: e.phasesCompleted || 0,
       phasesTotal:     e.phasesTotal     || 0,
+      multiplier:      e.multiplier      || 1,
     };
   }
 

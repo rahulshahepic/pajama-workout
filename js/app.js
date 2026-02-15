@@ -21,6 +21,24 @@
   let wakeLock     = null;
   let currentWorkoutId = null;
 
+  // ── User settings (persisted to localStorage) ──────────────
+  const SETTINGS_KEY = "pajama-settings";
+  let settings = { multiplier: 1, tts: false };
+
+  function loadSettings() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      if (s && typeof s === "object") {
+        settings.multiplier = typeof s.multiplier === "number" ? s.multiplier : 1;
+        settings.tts = !!s.tts;
+      }
+    } catch (_) {}
+  }
+
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (_) {}
+  }
+
   // ── DOM refs (cached on init) ────────────────────────────────
   const $ = (id) => document.getElementById(id);
 
@@ -57,8 +75,14 @@
       historyList:   $("history-list"),
       streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
-      btnSync:       $("btn-sync"),
-      syncStatus:    $("sync-status"),
+      btnSettings:       $("btn-settings"),
+      settingsBackdrop:  $("settings-backdrop"),
+      settingsPanel:     $("settings-panel"),
+      settingsAccount:   $("settings-account"),
+      multiplierSlider:  $("multiplier-slider"),
+      multiplierLabel:   $("multiplier-label"),
+      ttsToggle:         $("tts-toggle"),
+      syncStatusLine:    $("sync-status-line"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -71,12 +95,13 @@
     return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   }
 
-  function summarise(phasesArr) {
+  function summarise(phasesArr, mult) {
     let workCount = 0, stretchCount = 0, total = 0;
+    var m = mult || 1;
     for (const p of phasesArr) {
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
-      total += p.duration;
+      total += Math.round(p.duration * m);
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
@@ -85,8 +110,9 @@
     return parts.join(" \u00B7 ");
   }
 
-  function workoutDuration(w) {
-    return w.phases.reduce((sum, p) => sum + p.duration, 0);
+  function workoutDuration(w, mult) {
+    var m = mult || 1;
+    return w.phases.reduce((sum, p) => sum + Math.round(p.duration * m), 0);
   }
 
   /** Spread a SOUNDS entry into beep(freq, dur, count) */
@@ -112,6 +138,19 @@
         osc.stop(t + durMs / 1000);
       }
     } catch (_) { /* silent fail */ }
+  }
+
+  // ── TTS (text-to-speech) ────────────────────────────────────
+  function speak(text) {
+    if (!settings.tts || !window.speechSynthesis) return;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.1;
+    u.volume = 0.8;
+    speechSynthesis.speak(u);
+  }
+
+  function cancelSpeech() {
+    if (window.speechSynthesis) speechSynthesis.cancel();
   }
 
   // ── Wake Lock (keeps screen on during workout) ──────────────
@@ -241,6 +280,7 @@
       durationSecs:    totalTime,
       phasesCompleted: phases.length,
       phasesTotal:     phases.length,
+      multiplier:      settings.multiplier,
     });
 
     // Sync to cloud (fire-and-forget)
@@ -256,6 +296,7 @@
         clearInterval(interval);
         state = "done";
         cue("done");
+        speak("Workout complete");
         showDone();
         return;
       }
@@ -267,13 +308,21 @@
       if (nx.type !== prev.type) cue("transition");
       else cue("start");
 
+      speak(nx.name);
       applyTheme(nx.type);
       render();
       return;
     }
     timeLeft--;
     elapsed++;
-    if (timeLeft <= 3) cue("tick");
+    if (timeLeft === 3) {
+      cue("tick");
+      // Announce what's next at 3 seconds remaining
+      var nextPhase = phases[phaseIndex + 1];
+      if (nextPhase) speak("Next: " + nextPhase.name);
+    } else if (timeLeft < 3 && timeLeft > 0) {
+      cue("tick");
+    }
     render();
   }
 
@@ -297,6 +346,7 @@
   function startCountdown(secs) {
     countdownLeft = secs;
     state = "countdown";
+    speak("Get ready");
     renderCountdown();
     showButtons("countdown");
     requestWakeLock();
@@ -343,6 +393,7 @@
     render();
     showButtons("running");
     cue("start");
+    speak(phases[phaseIndex].name);
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     requestWakeLock();
@@ -365,6 +416,7 @@
 
   function reset() {
     clearInterval(interval);
+    cancelSpeech();
     state = "idle";
     countdownLeft = 0;
     releaseWakeLock();
@@ -382,6 +434,7 @@
   function skip() {
     if (state === "countdown") { skipCountdown(); return; }
     if (state !== "running" && state !== "paused") return;
+    cancelSpeech();
     // consume remaining time of current phase
     elapsed += timeLeft;
     const next = phaseIndex + 1;
@@ -423,19 +476,23 @@
   function buildPicker() {
     const container = $("workout-list");
     container.innerHTML = "";
+    var m = settings.multiplier;
 
     // Sort by duration (shortest first)
     const sorted = Object.keys(WORKOUTS).sort(
-      (a, b) => workoutDuration(WORKOUTS[a]) - workoutDuration(WORKOUTS[b])
+      (a, b) => workoutDuration(WORKOUTS[a], m) - workoutDuration(WORKOUTS[b], m)
     );
 
     for (const key of sorted) {
       const w    = WORKOUTS[key];
       const card = document.createElement("div");
       card.className = "workout-card";
+      var meta = summarise(w.phases, m);
+      var desc = w.description ? `<div class="workout-card-desc">${w.description}</div>` : "";
       card.innerHTML =
         `<div class="workout-card-title">${w.title}</div>` +
-        `<div class="workout-card-meta">${summarise(w.phases)}</div>`;
+        `<div class="workout-card-meta">${meta}</div>` +
+        desc;
       card.addEventListener("click", () => selectWorkout(key));
       container.appendChild(card);
     }
@@ -444,7 +501,10 @@
   function selectWorkout(id, push) {
     currentWorkoutId = id;
     const w = WORKOUTS[id];
-    phases    = w.phases;
+    var m = settings.multiplier;
+    phases = w.phases.map(function (p) {
+      return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
+    });
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
     els.pickerScreen.classList.remove("active");
@@ -466,7 +526,7 @@
     els.timerRing.setAttribute("stroke-dashoffset", RING_CIRCUMFERENCE);
     els.timerDisplay.textContent = fmt(phases[0].duration);
     els.sectionLabel.textContent = "Ready";
-    els.counterLabel.textContent = summarise(phases);
+    els.counterLabel.textContent = summarise(w.phases, m);
     els.exerciseName.textContent = w.title;
     els.exerciseHint.textContent = w.subtitle;
     els.upnextContainer.style.display = "none";
@@ -523,9 +583,12 @@
       for (const item of items) {
         const time = new Date(item.completedAt);
         const mins = Math.round(item.durationSecs / 60);
+        var multTag = (item.multiplier && item.multiplier !== 1)
+          ? " @ " + item.multiplier + "\u00D7"
+          : "";
         html += `<div class="history-entry">`;
         html += `<span class="history-entry-name">${item.title}</span>`;
-        html += `<span class="history-entry-meta">${mins} min &middot; ${formatTime(time)}</span>`;
+        html += `<span class="history-entry-meta">${mins} min${multTag} &middot; ${formatTime(time)}</span>`;
         html += `</div>`;
       }
       html += `</div>`;
@@ -576,71 +639,121 @@
     }
   }
 
-  // ── Sync UI ────────────────────────────────────────────────
+  // ── Sync / Account ─────────────────────────────────────────
+  var lastSyncedAt = null;
+
   function syncAvailable() {
     return typeof SyncManager !== "undefined";
   }
 
-  function updateSyncUI() {
+  function updateSyncStatusLine() {
     if (!syncAvailable()) {
-      els.btnSync.style.display = "none";
+      els.syncStatusLine.classList.remove("visible");
       return;
     }
-    els.btnSync.textContent = "SYNC";
     if (SyncManager.isSignedIn()) {
       var email = SyncManager.getEmail();
-      els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
-      els.syncStatus.style.display = "block";
+      var text = "";
+      if (lastSyncedAt) {
+        text = "Synced " + timeAgo(lastSyncedAt);
+        if (email) text += " \u00B7 " + email;
+      } else {
+        text = email ? "Signed in \u00B7 " + email : "Signed in";
+      }
+      els.syncStatusLine.textContent = text;
+      els.syncStatusLine.classList.add("visible");
     } else {
-      els.syncStatus.style.display = "none";
+      els.syncStatusLine.textContent = "Tap \u2699 to enable sync";
+      els.syncStatusLine.classList.add("visible");
+    }
+  }
+
+  function timeAgo(date) {
+    var diff = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (diff < 60) return "just now";
+    if (diff < 3600) return Math.floor(diff / 60) + " min ago";
+    if (diff < 86400) return Math.floor(diff / 3600) + " hr ago";
+    return "yesterday";
+  }
+
+  function renderSettingsAccount() {
+    if (!syncAvailable()) {
+      els.settingsAccount.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.3)">Sync not available</div>';
+      return;
+    }
+    if (SyncManager.isSignedIn()) {
+      var email = SyncManager.getEmail() || "Connected";
+      els.settingsAccount.innerHTML =
+        '<div class="settings-account-signed-in">' +
+          '<span class="settings-account-email">' + email + '</span>' +
+          '<div class="settings-account-actions">' +
+            '<button class="btn-settings-action" id="btn-sync-now">SYNC</button>' +
+            '<button class="btn-settings-action btn-settings-signout" id="btn-signout">SIGN OUT</button>' +
+          '</div>' +
+        '</div>';
+      $("btn-sync-now").addEventListener("click", async function () {
+        this.textContent = "SYNCING\u2026";
+        await syncAndUpdateUI();
+        this.textContent = "SYNC";
+      });
+      $("btn-signout").addEventListener("click", function () {
+        SyncManager.signOut();
+        lastSyncedAt = null;
+        renderSettingsAccount();
+        updateSyncStatusLine();
+      });
+    } else {
+      els.settingsAccount.innerHTML =
+        '<button class="btn-settings-action" id="btn-signin">SIGN IN WITH GOOGLE</button>';
+      $("btn-signin").addEventListener("click", async function () {
+        this.textContent = "SIGNING IN\u2026";
+        try {
+          await SyncManager.signIn();
+          if (SyncManager.isSignedIn()) {
+            renderSettingsAccount();
+            updateSyncStatusLine();
+            syncAndUpdateUI();
+          } else {
+            this.textContent = "SIGN IN WITH GOOGLE";
+          }
+        } catch (_) {
+          this.textContent = "SIGN IN WITH GOOGLE";
+        }
+      });
     }
   }
 
   async function syncAndUpdateUI() {
-    if (!syncAvailable()) return;
-    els.syncStatus.textContent = "Syncing\u2026";
-    els.syncStatus.style.display = "block";
+    if (!syncAvailable() || !SyncManager.isSignedIn()) return;
     var result = await SyncManager.sync();
     if (result.ok) {
-      var email = SyncManager.getEmail();
-      els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
+      lastSyncedAt = new Date();
+      updateSyncStatusLine();
       updateStreakBanner();
       if (els.historyScreen.classList.contains("active")) renderHistory();
-    } else {
-      els.syncStatus.textContent = "Sync failed \u00B7 " + (result.reason || "unknown");
-      els.syncStatus.style.display = "block";
     }
   }
 
-  async function handleSyncButton() {
-    if (!syncAvailable()) return;
-    if (SyncManager.isSignedIn()) {
-      await syncAndUpdateUI();
-    } else {
-      try {
-        els.syncStatus.textContent = "Signing in\u2026";
-        els.syncStatus.style.display = "block";
-        await SyncManager.signIn();
-        if (SyncManager.isSignedIn()) {
-          updateSyncUI();
-          await syncAndUpdateUI();
-        } else {
-          els.syncStatus.textContent = "Sign-in cancelled";
-          els.syncStatus.style.display = "block";
-        }
-      } catch (e) {
-        els.syncStatus.textContent = "Sign-in failed";
-        els.syncStatus.style.display = "block";
-      }
-    }
+  // ── Settings panel ──────────────────────────────────────────
+  function openSettings() {
+    renderSettingsAccount();
+    els.multiplierSlider.value = settings.multiplier;
+    els.multiplierLabel.innerHTML = fmtMultiplier(settings.multiplier);
+    els.ttsToggle.checked = settings.tts;
+    els.settingsBackdrop.classList.add("open");
+    els.settingsPanel.classList.add("open");
   }
 
-  function handleSyncStatusTap() {
-    if (!syncAvailable() || !SyncManager.isSignedIn()) return;
-    if (confirm("Sign out of sync?")) {
-      SyncManager.signOut();
-      updateSyncUI();
-    }
+  function closeSettings() {
+    els.settingsBackdrop.classList.remove("open");
+    els.settingsPanel.classList.remove("open");
+  }
+
+  function fmtMultiplier(v) {
+    if (v === 1) return "1\u00D7";
+    // Show one decimal for non-integers, no trailing zero for .5 etc.
+    var s = Number(v) % 1 === 0 ? String(v) : v.toFixed(2).replace(/0$/, "");
+    return s + "\u00D7";
   }
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -685,6 +798,7 @@
   // ── Init ────────────────────────────────────────────────────
   async function init() {
     cacheDOM();
+    loadSettings();
 
     // ── Show UI first (must never fail) ──────────────────────
     // Seed the initial history entry so there's something to go "back" to
@@ -711,23 +825,35 @@
       WorkoutHistory.clear();
       renderHistory();
     });
-    els.btnSync.addEventListener("click", handleSyncButton);
-    els.syncStatus.addEventListener("click", handleSyncStatusTap);
+
+    // ── Settings panel ────────────────────────────────────────
+    els.btnSettings.addEventListener("click", openSettings);
+    els.settingsBackdrop.addEventListener("click", closeSettings);
+
+    els.multiplierSlider.addEventListener("input", function () {
+      var v = parseFloat(this.value);
+      settings.multiplier = v;
+      els.multiplierLabel.innerHTML = fmtMultiplier(v);
+    });
+    els.multiplierSlider.addEventListener("change", function () {
+      saveSettings();
+      buildPicker();   // update displayed times
+    });
+
+    els.ttsToggle.addEventListener("change", function () {
+      settings.tts = this.checked;
+      saveSettings();
+    });
 
     // ── Sync setup (must never break the app) ────────────────
     try {
-      var redirect = await SyncManager.handleRedirect();
-      updateSyncUI();
-      if (redirect && redirect.wasRedirect && !redirect.ok) {
-        var msg = redirect.error || "unknown";
-        if (redirect.detail) msg += " \u00B7 " + redirect.detail.slice(0, 200);
-        els.syncStatus.textContent = "Sign-in failed \u00B7 " + msg;
-        els.syncStatus.style.display = "block";
-      } else if ((redirect && redirect.ok) || SyncManager.isSignedIn()) {
+      await SyncManager.handleRedirect();
+      updateSyncStatusLine();
+      if (SyncManager.isSignedIn()) {
         syncAndUpdateUI();
       }
     } catch (_) {
-      updateSyncUI();
+      updateSyncStatusLine();
     }
   }
 

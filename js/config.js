@@ -14,7 +14,7 @@
  */
 
 /** Bump this when any cached asset changes.  SW uses it for cache-busting. */
-const APP_VERSION = 23;
+const APP_VERSION = 24;
 
 /** Google OAuth — public identifier, not a secret.  Change if you fork. */
 const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
@@ -27,30 +27,31 @@ const WORKOUTS = {
     id: "pajama-classic",
     title: "Pajama Workout",
     subtitle: "5 min workout + 5 min stretch",
+    description: "Full-body basics you can do in your pajamas, plus a deep stretch cool-down.",
     phases: [
       // ─── Workout block ───
-      { name: "Squats",          type: "work",    duration: 40, hint: "Slow & controlled, not too deep" },
-      { name: "Rest",            type: "rest",    duration: 20, hint: "Shake it out" },
-      { name: "Push-ups",        type: "work",    duration: 40, hint: "Knees down is fine — go slow" },
-      { name: "Rest",            type: "rest",    duration: 20, hint: "Shake it out" },
-      { name: "Dead Bugs",       type: "work",    duration: 40, hint: "On your back, opposite arm & leg" },
-      { name: "Rest",            type: "rest",    duration: 20, hint: "Shake it out" },
-      { name: "Reverse Lunges",  type: "work",    duration: 40, hint: "Alternate legs, hold counter if needed" },
-      { name: "Rest",            type: "rest",    duration: 20, hint: "Shake it out" },
-      { name: "Plank",           type: "work",    duration: 40, hint: "Knees down when you need to" },
-      { name: "Rest",            type: "rest",    duration: 20, hint: "Nice work — stretches next" },
+      { name: "Squats",          type: "work",    duration: 40, hint: "Feet shoulder-width, sit back like there's a chair behind you. Lower until thighs are parallel, push through your heels to stand." },
+      { name: "Rest",            type: "rest",    duration: 20, hint: "Shake out your legs, grab water if you need it." },
+      { name: "Push-ups",        type: "work",    duration: 40, hint: "Hands just wider than shoulders, body in a straight line. Lower your chest to the floor and press up. Knees down is totally fine." },
+      { name: "Rest",            type: "rest",    duration: 20, hint: "Roll your wrists, catch your breath." },
+      { name: "Dead Bugs",       type: "work",    duration: 40, hint: "Lie on your back, arms up, knees at 90\u00B0. Extend opposite arm and leg toward the floor, then switch. Keep your lower back pressed flat." },
+      { name: "Rest",            type: "rest",    duration: 20, hint: "Stay on your back, let your arms relax." },
+      { name: "Reverse Lunges",  type: "work",    duration: 40, hint: "Step one foot back, drop the back knee toward the floor, then drive through the front heel to stand. Alternate legs each rep." },
+      { name: "Rest",            type: "rest",    duration: 20, hint: "Shake it out — one more exercise to go." },
+      { name: "Plank",           type: "work",    duration: 40, hint: "Forearms on the floor, body straight from head to heels. Squeeze your glutes and brace your core. Drop to knees if you need to." },
+      { name: "Rest",            type: "rest",    duration: 20, hint: "Nice work — stretches coming up. Grab a mat or towel." },
 
       // ─── Stretch block ───
-      { name: "Quad Stretch — L",  type: "stretch", duration: 25, hint: "Grab foot behind you, hold the counter" },
-      { name: "Quad Stretch — R",  type: "stretch", duration: 25, hint: "Same thing, other side" },
-      { name: "Hip Flexor — L",    type: "stretch", duration: 30, hint: "Half-kneeling, push hips forward" },
-      { name: "Hip Flexor — R",    type: "stretch", duration: 30, hint: "This is the money stretch" },
-      { name: "Chest Stretch",     type: "stretch", duration: 30, hint: "Forearm on doorframe, lean through" },
-      { name: "Figure Four — L",   type: "stretch", duration: 30, hint: "On your back, ankle over knee, pull in" },
-      { name: "Figure Four — R",   type: "stretch", duration: 30, hint: "Breathe into it" },
-      { name: "Spinal Twist — L",  type: "stretch", duration: 25, hint: "Knees to one side, arms out" },
-      { name: "Spinal Twist — R",  type: "stretch", duration: 25, hint: "Let gravity do the work" },
-      { name: "Child's Pose",      type: "stretch", duration: 50, hint: "The day is over. You showed up." },
+      { name: "Quad Stretch — L",  type: "stretch", duration: 25, hint: "Stand on your right leg, grab your left foot behind you and pull heel toward glute. Hold something for balance." },
+      { name: "Quad Stretch — R",  type: "stretch", duration: 25, hint: "Same thing, other side. Keep knees close together and stand tall." },
+      { name: "Hip Flexor — L",    type: "stretch", duration: 30, hint: "Half-kneeling with left knee down. Push your hips forward gently until you feel a stretch in the front of your hip." },
+      { name: "Hip Flexor — R",    type: "stretch", duration: 30, hint: "Switch sides. Squeeze the glute of the kneeling leg to deepen the stretch." },
+      { name: "Chest Stretch",     type: "stretch", duration: 30, hint: "Place your forearm on a doorframe at shoulder height. Step through and rotate your chest away until you feel the stretch across your pec." },
+      { name: "Figure Four — L",   type: "stretch", duration: 30, hint: "Lie on your back, cross left ankle over right knee. Pull right thigh toward you to stretch the left glute." },
+      { name: "Figure Four — R",   type: "stretch", duration: 30, hint: "Switch sides. Keep your head on the floor and relax your shoulders." },
+      { name: "Spinal Twist — L",  type: "stretch", duration: 25, hint: "Lie on your back, drop both knees to the left. Spread your arms wide and look right. Let gravity pull your knees down." },
+      { name: "Spinal Twist — R",  type: "stretch", duration: 25, hint: "Other side. Breathe slowly and let your lower back release." },
+      { name: "Child's Pose",      type: "stretch", duration: 50, hint: "Knees wide, arms stretched forward, forehead on the floor. Sink your hips back and breathe. The day is done. You showed up." },
     ],
   },
 
@@ -59,42 +60,43 @@ const WORKOUTS = {
     id: "rotator-cuff",
     title: "Rotator Cuff Rescue",
     subtitle: "~10 min shoulder stretches for impingement relief",
+    description: "Targeted stretches and gentle strengthening for cranky shoulders and impingement.",
     phases: [
       // ─── Warm-up ───
-      { name: "Pendulum Swings — L",       type: "work",    duration: 30, hint: "Lean on a table, let arm hang & swing small circles" },
-      { name: "Pendulum Swings — R",       type: "work",    duration: 30, hint: "Relax the shoulder, let gravity do the work" },
-      { name: "Rest",                      type: "rest",    duration: 15, hint: "Roll your shoulders back a few times" },
+      { name: "Pendulum Swings — L",       type: "work",    duration: 30, hint: "Lean on a table with your right hand, let your left arm hang. Swing it in small circles, gradually getting bigger. Keep the shoulder completely relaxed." },
+      { name: "Pendulum Swings — R",       type: "work",    duration: 30, hint: "Switch sides. Let gravity and momentum do the work — don't actively muscle the arm around." },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Roll both shoulders back slowly a few times." },
 
       // ─── Cross-body & posterior capsule ───
-      { name: "Cross-Body Stretch — L",    type: "stretch", duration: 30, hint: "Pull left arm across chest with right hand, keep shoulder down" },
-      { name: "Cross-Body Stretch — R",    type: "stretch", duration: 30, hint: "Same thing, other side — don't shrug up" },
-      { name: "Sleeper Stretch — L",       type: "stretch", duration: 30, hint: "Lie on left side, arm at 90°, gently push wrist toward floor" },
-      { name: "Sleeper Stretch — R",       type: "stretch", duration: 30, hint: "Easy pressure — stop before any sharp pain" },
-      { name: "Rest",                      type: "rest",    duration: 15, hint: "Shake out your arms" },
+      { name: "Cross-Body Stretch — L",    type: "stretch", duration: 30, hint: "Bring your left arm straight across your chest. Use your right hand to pull it closer. Keep your left shoulder blade down — don't let it hike up." },
+      { name: "Cross-Body Stretch — R",    type: "stretch", duration: 30, hint: "Same thing, other side. You should feel this in the back of your shoulder, not the front." },
+      { name: "Sleeper Stretch — L",       type: "stretch", duration: 30, hint: "Lie on your left side, left arm at 90\u00B0. Use your right hand to gently push your left wrist toward the floor. Stop before any sharp pain." },
+      { name: "Sleeper Stretch — R",       type: "stretch", duration: 30, hint: "Switch sides. Easy pressure — this stretches the posterior capsule of the shoulder." },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Shake out both arms, let them hang loose." },
 
       // ─── Doorframe / pec opening ───
-      { name: "Doorframe Stretch — Low",   type: "stretch", duration: 30, hint: "Forearm on frame at waist height, lean through & open chest" },
-      { name: "Doorframe Stretch — Mid",   type: "stretch", duration: 30, hint: "Elbow at shoulder height, step through gently" },
-      { name: "Doorframe Stretch — High",  type: "stretch", duration: 30, hint: "Hand above head on frame, lean forward to stretch upper pec" },
-      { name: "Rest",                      type: "rest",    duration: 15, hint: "Let your arms hang loose" },
+      { name: "Doorframe Stretch — Low",   type: "stretch", duration: 30, hint: "Place your forearm on a doorframe at waist height. Step through with the same-side foot and lean forward to open the lower chest." },
+      { name: "Doorframe Stretch — Mid",   type: "stretch", duration: 30, hint: "Move your elbow up to shoulder height on the frame. Step through gently. This targets the middle pec fibers." },
+      { name: "Doorframe Stretch — High",  type: "stretch", duration: 30, hint: "Hand above your head on the frame, elbow high. Lean forward to stretch the upper pec and front deltoid." },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Drop your arms, let them dangle and shake out." },
 
       // ─── External rotation & strengthening ───
-      { name: "Wall Slide",               type: "work",    duration: 30, hint: "Back to wall, arms in W, slide up to Y and back — slow" },
-      { name: "Rest",                      type: "rest",    duration: 10, hint: "Quick breather" },
-      { name: "Prone Y-T-W",              type: "work",    duration: 40, hint: "Face down, lift arms into Y, T, then W — squeeze shoulder blades" },
-      { name: "Rest",                      type: "rest",    duration: 15, hint: "Almost done with the work" },
+      { name: "Wall Slide",               type: "work",    duration: 30, hint: "Stand with your back flat against a wall. Start with arms in a W shape, then slowly slide them up into a Y overhead and back down. Keep contact with the wall." },
+      { name: "Rest",                      type: "rest",    duration: 10, hint: "Quick breather." },
+      { name: "Prone Y-T-W",              type: "work",    duration: 40, hint: "Lie face down, arms hanging off the edge of a bed or mat. Lift into a Y, hold briefly, then T, then W. Squeeze your shoulder blades together on each rep." },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Almost done with the active work." },
 
       // ─── Lat & upper trap release ───
-      { name: "Overhead Lat Stretch — L",  type: "stretch", duration: 30, hint: "Grab a doorframe overhead, lean away to stretch the lat" },
-      { name: "Overhead Lat Stretch — R",  type: "stretch", duration: 30, hint: "Tight lats pull the shoulder forward — this helps" },
-      { name: "Upper Trap Stretch — L",    type: "stretch", duration: 25, hint: "Tilt head right, gently pull with right hand, left arm relaxed" },
-      { name: "Upper Trap Stretch — R",    type: "stretch", duration: 25, hint: "Ear toward shoulder — breathe into the tight side" },
-      { name: "Rest",                      type: "rest",    duration: 10, hint: "One more to go" },
+      { name: "Overhead Lat Stretch — L",  type: "stretch", duration: 30, hint: "Grab a doorframe or pole overhead with your left hand. Step away and lean your hips to the right to stretch the lat. Tight lats pull your shoulder forward — this opens it up." },
+      { name: "Overhead Lat Stretch — R",  type: "stretch", duration: 30, hint: "Same thing, other side. You should feel a long stretch from your armpit down your side." },
+      { name: "Upper Trap Stretch — L",    type: "stretch", duration: 25, hint: "Tilt your head to the right, ear toward shoulder. Gently pull with your right hand while keeping your left arm relaxed at your side." },
+      { name: "Upper Trap Stretch — R",    type: "stretch", duration: 25, hint: "Switch sides. Breathe into the tight side of your neck. Don't pull hard — let the weight of your hand do the work." },
+      { name: "Rest",                      type: "rest",    duration: 10, hint: "One more section to go." },
 
       // ─── Cool-down ───
-      { name: "Thread the Needle — L",     type: "stretch", duration: 30, hint: "On all fours, slide left arm under & rotate — opens the thoracic spine" },
-      { name: "Thread the Needle — R",     type: "stretch", duration: 30, hint: "Let your chest melt toward the floor" },
-      { name: "Child's Pose w/ Reach",     type: "stretch", duration: 40, hint: "Walk hands forward, sink hips back, forehead down. You showed up." },
+      { name: "Thread the Needle — L",     type: "stretch", duration: 30, hint: "Start on all fours. Slide your left arm under your body and rotate, letting your left shoulder and temple rest on the floor. Opens up the thoracic spine." },
+      { name: "Thread the Needle — R",     type: "stretch", duration: 30, hint: "Switch sides. Let your chest melt toward the floor as you rotate." },
+      { name: "Child's Pose w/ Reach",     type: "stretch", duration: 40, hint: "Walk your hands as far forward as you can, then sink your hips back toward your heels. Forehead down, breathe deep. You showed up." },
     ],
   },
 
@@ -103,37 +105,38 @@ const WORKOUTS = {
     id: "lower-back-hips",
     title: "Lower Back & Hips",
     subtitle: "~10 min to loosen up the whole posterior chain",
+    description: "Gentle mobility work for tight hips, stiff lower back, and the whole posterior chain.",
     phases: [
       // ─── Warm-up ───
-      { name: "Cat-Cow",                  type: "work",    duration: 40, hint: "On all fours — arch on inhale, round on exhale, nice and slow" },
-      { name: "Rest",                     type: "rest",    duration: 10, hint: "Stay on all fours" },
-      { name: "Pelvic Tilts",             type: "work",    duration: 30, hint: "On your back, flatten low back to floor then release — find the rhythm" },
-      { name: "Rest",                     type: "rest",    duration: 10, hint: "Knees bent, feet flat" },
+      { name: "Cat-Cow",                  type: "work",    duration: 40, hint: "On all fours, hands under shoulders, knees under hips. Inhale and arch your back (cow), exhale and round it (cat). Move slowly and breathe into each position." },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Stay on all fours, relax your spine to neutral." },
+      { name: "Pelvic Tilts",             type: "work",    duration: 30, hint: "Lie on your back with knees bent, feet flat. Flatten your lower back into the floor (posterior tilt), then release. Find a gentle rhythm." },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Stay on your back, knees bent, feet flat." },
 
       // ─── Hip openers ───
-      { name: "90/90 Stretch — L",        type: "stretch", duration: 30, hint: "Front leg 90°, back leg 90° — sit tall, lean gently forward" },
-      { name: "90/90 Stretch — R",        type: "stretch", duration: 30, hint: "Same thing, other side — keep both sit bones down" },
-      { name: "Pigeon Pose — L",          type: "stretch", duration: 35, hint: "Front shin across mat, back leg long — fold forward if you can" },
-      { name: "Pigeon Pose — R",          type: "stretch", duration: 35, hint: "Breathe into the deep hip — don't force it" },
-      { name: "Rest",                     type: "rest",    duration: 15, hint: "Shake out the legs" },
+      { name: "90/90 Stretch — L",        type: "stretch", duration: 30, hint: "Sit on the floor. Front left leg bent 90\u00B0, back right leg bent 90\u00B0. Sit tall, then lean gently forward over the front shin. Keep both sit bones on the ground." },
+      { name: "90/90 Stretch — R",        type: "stretch", duration: 30, hint: "Switch sides. This targets the deep hip rotators. If it's intense, just sit tall without leaning." },
+      { name: "Pigeon Pose — L",          type: "stretch", duration: 35, hint: "From all fours, bring your left shin forward across your mat. Extend your right leg back. Walk your hands forward and fold over the front leg if you can." },
+      { name: "Pigeon Pose — R",          type: "stretch", duration: 35, hint: "Switch sides. Breathe deeply into the hip. Don't force the stretch — let gravity do the work over time." },
+      { name: "Rest",                     type: "rest",    duration: 15, hint: "Shake out your legs, roll your ankles." },
 
       // ─── Glute & hamstring ───
-      { name: "Figure Four — L",          type: "stretch", duration: 30, hint: "On your back, ankle over knee, pull thigh toward you" },
-      { name: "Figure Four — R",          type: "stretch", duration: 30, hint: "Keep head down, relax the shoulders" },
-      { name: "Hamstring Stretch — L",    type: "stretch", duration: 30, hint: "Leg up, loop a towel or grab behind the thigh, straighten gently" },
-      { name: "Hamstring Stretch — R",    type: "stretch", duration: 30, hint: "Flex the foot, micro-bend at the knee is fine" },
-      { name: "Rest",                     type: "rest",    duration: 10, hint: "Quick breather" },
+      { name: "Figure Four — L",          type: "stretch", duration: 30, hint: "Lie on your back. Cross your left ankle over your right knee, then pull your right thigh toward your chest. You'll feel this deep in the left glute." },
+      { name: "Figure Four — R",          type: "stretch", duration: 30, hint: "Switch sides. Keep your head down and shoulders relaxed on the floor." },
+      { name: "Hamstring Stretch — L",    type: "stretch", duration: 30, hint: "Lie on your back, lift your left leg up. Loop a towel behind the thigh or grab it with both hands. Gently straighten the leg. Flex the foot." },
+      { name: "Hamstring Stretch — R",    type: "stretch", duration: 30, hint: "Switch legs. A micro-bend at the knee is fine — don't lock it out." },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Quick breather. Stay on your back." },
 
       // ─── Low back release ───
-      { name: "Knees-to-Chest",           type: "stretch", duration: 30, hint: "Hug both knees in, rock gently side to side" },
-      { name: "Spinal Twist — L",         type: "stretch", duration: 30, hint: "Knees fall left, arms out wide, look right" },
-      { name: "Spinal Twist — R",         type: "stretch", duration: 30, hint: "Let gravity pull the knees down — don't force" },
-      { name: "Cobra / Sphinx",           type: "stretch", duration: 30, hint: "Face down, press up on forearms, open the front body" },
-      { name: "Rest",                     type: "rest",    duration: 10, hint: "Almost done" },
+      { name: "Knees-to-Chest",           type: "stretch", duration: 30, hint: "Hug both knees into your chest. Rock gently side to side to massage your lower back against the floor." },
+      { name: "Spinal Twist — L",         type: "stretch", duration: 30, hint: "Lie on your back, drop both knees to the left. Spread your arms wide and look to the right. Let gravity pull your knees down." },
+      { name: "Spinal Twist — R",         type: "stretch", duration: 30, hint: "Switch sides. Relax your shoulders and breathe into the twist. Don't force your knees to the floor." },
+      { name: "Cobra / Sphinx",           type: "stretch", duration: 30, hint: "Lie face down, press up onto your forearms (sphinx) or hands (cobra). Open your chest and gently extend your lower back. Don't clench your glutes." },
+      { name: "Rest",                     type: "rest",    duration: 10, hint: "Almost done. Lie flat on your back." },
 
       // ─── Cool-down ───
-      { name: "Happy Baby",               type: "stretch", duration: 30, hint: "Grab outer feet, pull knees wide toward armpits, rock gently" },
-      { name: "Child's Pose",             type: "stretch", duration: 45, hint: "Knees wide, arms long, melt into the floor. You showed up." },
+      { name: "Happy Baby",               type: "stretch", duration: 30, hint: "Lie on your back, grab the outside edges of your feet. Pull your knees wide toward your armpits. Rock gently side to side." },
+      { name: "Child's Pose",             type: "stretch", duration: 45, hint: "Knees wide, arms stretched forward, forehead on the floor. Sink your hips back and let everything release. You showed up." },
     ],
   },
 
@@ -142,13 +145,14 @@ const WORKOUTS = {
     id: "keyboard-warrior",
     title: "Keyboard Warrior",
     subtitle: "1 min neck, shoulders & arms — no excuses",
+    description: "A quick desk reset for neck, shoulders, and wrists. Do it between meetings.",
     phases: [
-      { name: "Neck Tilt — L",         type: "stretch", duration: 10, hint: "Ear toward left shoulder, gentle pull with left hand" },
-      { name: "Neck Tilt — R",         type: "stretch", duration: 10, hint: "Other side — let the weight of your hand do the work" },
-      { name: "Chin Tucks",            type: "work",    duration: 10, hint: "Pull chin straight back, make a double chin — hold 2s, repeat" },
-      { name: "Shoulder Shrugs",       type: "work",    duration: 10, hint: "Shoulders up to ears, hold 2s, drop — repeat" },
-      { name: "Wrist Circles",         type: "work",    duration: 10, hint: "Interlace fingers, slow circles both directions" },
-      { name: "Chest Opener",          type: "stretch", duration: 10, hint: "Hands behind head, squeeze shoulder blades, open elbows wide" },
+      { name: "Neck Tilt — L",         type: "stretch", duration: 10, hint: "Tilt your head to the left, ear toward shoulder. Place your left hand gently on top and let its weight deepen the stretch. Don't pull." },
+      { name: "Neck Tilt — R",         type: "stretch", duration: 10, hint: "Same thing, other side. You should feel this along the side of your neck and into the upper trap." },
+      { name: "Chin Tucks",            type: "work",    duration: 10, hint: "Pull your chin straight back to make a double chin. Hold for 2 seconds, release, repeat. Fights forward head posture from screen time." },
+      { name: "Shoulder Shrugs",       type: "work",    duration: 10, hint: "Raise both shoulders up toward your ears, hold for 2 seconds, then drop them completely. Repeat. Release the tension you've been holding." },
+      { name: "Wrist Circles",         type: "work",    duration: 10, hint: "Interlace your fingers in front of you. Make slow, wide circles with your wrists in both directions. Great for typing fatigue." },
+      { name: "Chest Opener",          type: "stretch", duration: 10, hint: "Hands behind your head, elbows wide. Squeeze your shoulder blades together and open your chest. Hold and breathe. Reverses the desk hunch." },
     ],
   },
 
@@ -157,16 +161,17 @@ const WORKOUTS = {
     id: "quick-five",
     title: "Quick Five",
     subtitle: "5 minutes, no excuses",
+    description: "Five exercises, no stretches, no rest longer than 20 seconds. Just get it done.",
     phases: [
-      { name: "Jumping Jacks",   type: "work", duration: 40, hint: "Wake up those joints" },
-      { name: "Rest",            type: "rest", duration: 20, hint: "Breathe" },
-      { name: "Push-ups",        type: "work", duration: 40, hint: "Knees down is fine" },
-      { name: "Rest",            type: "rest", duration: 20, hint: "Shake it out" },
-      { name: "Bodyweight Squats", type: "work", duration: 40, hint: "Slow on the way down" },
-      { name: "Rest",            type: "rest", duration: 20, hint: "Almost there" },
-      { name: "Mountain Climbers", type: "work", duration: 40, hint: "Steady pace, don't rush" },
-      { name: "Rest",            type: "rest", duration: 20, hint: "Last one coming up" },
-      { name: "Plank",           type: "work", duration: 40, hint: "Hold strong, you got this" },
+      { name: "Jumping Jacks",   type: "work", duration: 40, hint: "Feet together, arms at sides. Jump feet wide while raising arms overhead, then jump back. Keep a steady rhythm to get your heart rate up." },
+      { name: "Rest",            type: "rest", duration: 20, hint: "Breathe. Shake out your arms." },
+      { name: "Push-ups",        type: "work", duration: 40, hint: "Hands wider than shoulders, body straight. Lower your chest toward the floor and press back up. Drop to knees if you need to — keep going." },
+      { name: "Rest",            type: "rest", duration: 20, hint: "Shake out your wrists and catch your breath." },
+      { name: "Bodyweight Squats", type: "work", duration: 40, hint: "Feet shoulder-width apart. Sit back and down like you're sitting in a chair. Go slow on the way down, push through heels on the way up." },
+      { name: "Rest",            type: "rest", duration: 20, hint: "Almost there — two more to go." },
+      { name: "Mountain Climbers", type: "work", duration: 40, hint: "Start in a high plank. Drive one knee toward your chest, then switch legs. Keep your hips level and maintain a steady pace — no need to sprint." },
+      { name: "Rest",            type: "rest", duration: 20, hint: "Last one coming up. You've got this." },
+      { name: "Plank",           type: "work", duration: 40, hint: "Forearms or hands on the floor, body in a straight line from head to heels. Squeeze everything tight. If you need to drop to knees, do it — just don't quit." },
     ],
   },
 };

@@ -288,6 +288,12 @@ body {
   color: rgba(255,255,255,0.3);
   letter-spacing: 0.5px;
 }
+.workout-card-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.2);
+  margin-top: 6px;
+  line-height: 1.4;
+}
 
 /* ── Timer screen (hidden by default until a workout starts) ── */
 #timer-screen {
@@ -327,28 +333,51 @@ body {
 }
 #streak-banner.visible { display: block; }
 
-/* ── Picker action buttons (History + Sync) ───────────────── */
+/* ── Picker header (title + gear) ─────────────────────────── */
+#picker-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+#btn-settings {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+#btn-settings:hover { color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.06); }
+
+/* ── Sync status line (subtle, under subtitle) ────────────── */
+.sync-status-line {
+  display: none;
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.3px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.sync-status-line.visible { display: block; }
+
+/* ── Picker action buttons ────────────────────────────────── */
 #picker-actions {
   display: flex;
   gap: 12px;
   margin-top: 24px;
 }
-.btn-history,
-.btn-sync {
-  flex: 1;
-  padding: 10px 0;
+.btn-history {
+  padding: 10px 32px;
   font-size: 12px;
   letter-spacing: 2px;
-  text-align: center;
-}
-
-/* ── Sync status text ─────────────────────────────────────── */
-.sync-status {
-  display: none;
-  font-size: 11px;
-  color: rgba(255,255,255,0.25);
-  letter-spacing: 0.5px;
-  margin-top: 10px;
   text-align: center;
 }
 
@@ -489,3 +518,182 @@ body {
   transition: opacity 0.3s ease;
 }
 #wake-indicator.on { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Settings panel (bottom sheet)
+   ═══════════════════════════════════════════════════════════════ */
+#settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#settings-backdrop.open { opacity: 1; pointer-events: auto; }
+
+#settings-panel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  background: #1e2a3a;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px 16px 0 0;
+  padding: 12px 24px 32px;
+  max-height: 85vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#settings-panel.open { transform: translateY(0); }
+
+.settings-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.15);
+  margin: 0 auto 16px;
+}
+
+.settings-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-bottom: 12px;
+}
+
+/* ── Multiplier slider ────────────────────────────────────── */
+.settings-multiplier {
+  text-align: center;
+}
+#multiplier-label {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--accent);
+  display: block;
+  margin-bottom: 8px;
+}
+#multiplier-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  outline: none;
+}
+#multiplier-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid #1e2a3a;
+  box-shadow: 0 0 6px rgba(78,205,196,0.3);
+}
+#multiplier-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid #1e2a3a;
+}
+.multiplier-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.2);
+  font-family: var(--mono);
+}
+
+/* ── Toggle switch ────────────────────────────────────────── */
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.settings-toggle input { display: none; }
+.toggle-track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  flex-shrink: 0;
+  transition: background 0.25s ease;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+.settings-toggle input:checked ~ .toggle-track {
+  background: rgba(78,205,196,0.3);
+}
+.settings-toggle input:checked ~ .toggle-track .toggle-thumb {
+  transform: translateX(20px);
+  background: #4ECDC4;
+}
+.toggle-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+}
+
+/* ── Account section in settings ──────────────────────────── */
+.settings-account-signed-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-account-email {
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.settings-account-actions {
+  display: flex;
+  gap: 8px;
+}
+.btn-settings-action {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  font-family: var(--mono);
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+.btn-settings-action:hover { background: rgba(255,255,255,0.06); }
+.btn-settings-signout {
+  color: rgba(255,100,100,0.5);
+  border-color: rgba(255,100,100,0.15);
+}
