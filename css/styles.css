@@ -335,9 +335,11 @@ body {
 }
 .btn-history,
 .btn-sync {
-  padding: 10px 28px;
+  flex: 1;
+  padding: 10px 0;
   font-size: 12px;
   letter-spacing: 2px;
+  text-align: center;
 }
 
 /* ── Sync status text ─────────────────────────────────────── */
