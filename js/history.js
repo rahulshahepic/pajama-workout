@@ -113,6 +113,18 @@ const WorkoutHistory = (function () {
     };
   }
 
+  // ── Sync helpers (used by SyncManager) ─────────────────────
+
+  /** Return the raw envelope for upload to remote storage. */
+  function exportData() {
+    return loadEnvelope();
+  }
+
+  /** Replace all local entries with the given array (used after merge). */
+  function replaceEntries(entries) {
+    _save({ version: SCHEMA_VERSION, entries: entries.map(normaliseEntry) });
+  }
+
   // ── Public API ──────────────────────────────────────────────
 
   /** Record a completed workout */
@@ -192,7 +204,7 @@ const WorkoutHistory = (function () {
   }
 
   // ── Expose ──────────────────────────────────────────────────
-  return { record, getAll, totalCount, streak, thisWeekCount, clear };
+  return { record, getAll, totalCount, streak, thisWeekCount, clear, exportData, replaceEntries };
 })();
 
 // Allow Node.js test imports while keeping browser globals working

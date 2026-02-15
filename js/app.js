@@ -57,6 +57,8 @@
       historyList:   $("history-list"),
       streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
+      btnSync:       $("btn-sync"),
+      syncStatus:    $("sync-status"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -240,6 +242,9 @@
       phasesCompleted: phases.length,
       phasesTotal:     phases.length,
     });
+
+    // Sync to cloud (fire-and-forget)
+    if (SyncManager.isSignedIn()) SyncManager.sync().catch(() => {});
   }
 
   // ── Timer core ──────────────────────────────────────────────
@@ -571,6 +576,45 @@
     }
   }
 
+  // ── Sync UI ────────────────────────────────────────────────
+  function updateSyncUI() {
+    if (SyncManager.isSignedIn()) {
+      const email = SyncManager.getEmail();
+      els.btnSync.textContent = "SIGN OUT";
+      els.btnSync.style.display = "inline-block";
+      els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
+      els.syncStatus.style.display = "block";
+    } else {
+      els.btnSync.textContent = "SYNC";
+      els.btnSync.style.display = "inline-block";
+      els.syncStatus.style.display = "none";
+    }
+  }
+
+  async function syncAndUpdateUI() {
+    els.syncStatus.textContent = "Syncing\u2026";
+    els.syncStatus.style.display = "block";
+    const result = await SyncManager.sync();
+    if (result.ok) {
+      const email = SyncManager.getEmail();
+      els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
+      updateStreakBanner();
+      if (els.historyScreen.classList.contains("active")) renderHistory();
+    } else {
+      els.syncStatus.textContent = "Sync failed";
+      setTimeout(updateSyncUI, 3000);
+    }
+  }
+
+  function handleSyncButton() {
+    if (SyncManager.isSignedIn()) {
+      SyncManager.signOut();
+      updateSyncUI();
+    } else {
+      SyncManager.signIn();
+    }
+  }
+
   // ── Keyboard shortcuts ──────────────────────────────────────
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
@@ -611,8 +655,11 @@
   });
 
   // ── Init ────────────────────────────────────────────────────
-  function init() {
+  async function init() {
     cacheDOM();
+
+    // Handle OAuth redirect (if returning from Google consent screen)
+    const wasRedirect = await SyncManager.handleRedirect();
 
     // Wire buttons
     els.btnStart.addEventListener("click", start);
@@ -627,6 +674,7 @@
       WorkoutHistory.clear();
       renderHistory();
     });
+    els.btnSync.addEventListener("click", handleSyncButton);
 
     // Seed the initial history entry so there's something to go "back" to
     history.replaceState({ screen: "picker" }, "");
@@ -637,6 +685,12 @@
       selectWorkout(workoutKeys[0]);
     } else {
       showPicker(false);
+    }
+
+    // Sync: on fresh sign-in or on app open when already signed in
+    updateSyncUI();
+    if (wasRedirect || SyncManager.isSignedIn()) {
+      syncAndUpdateUI();
     }
   }
 

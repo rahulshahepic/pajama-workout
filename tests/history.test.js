@@ -218,3 +218,37 @@ describe("thisWeekCount()", () => {
     assert.equal(WorkoutHistory.thisWeekCount(), 0);
   });
 });
+
+describe("exportData()", () => {
+  it("returns a versioned envelope", () => {
+    WorkoutHistory.record(makeEntry());
+    const data = WorkoutHistory.exportData();
+    assert.equal(typeof data.version, "number");
+    assert.ok(Array.isArray(data.entries));
+    assert.equal(data.entries.length, 1);
+  });
+});
+
+describe("replaceEntries()", () => {
+  it("replaces all local entries with the given array", () => {
+    WorkoutHistory.record(makeEntry());
+    assert.equal(WorkoutHistory.totalCount(), 1);
+
+    WorkoutHistory.replaceEntries([
+      { workoutId: "x", title: "X", completedAt: "2025-01-01T00:00:00Z", durationSecs: 60, phasesCompleted: 1, phasesTotal: 1 },
+      { workoutId: "y", title: "Y", completedAt: "2025-02-01T00:00:00Z", durationSecs: 120, phasesCompleted: 2, phasesTotal: 2 },
+    ]);
+    assert.equal(WorkoutHistory.totalCount(), 2);
+    const all = WorkoutHistory.getAll();
+    assert.equal(all[0].title, "Y");
+    assert.equal(all[1].title, "X");
+  });
+
+  it("normalises entries with missing fields", () => {
+    WorkoutHistory.replaceEntries([{ completedAt: "2025-03-01T00:00:00Z" }]);
+    const all = WorkoutHistory.getAll();
+    assert.equal(all[0].workoutId, "unknown");
+    assert.equal(all[0].title, "Workout");
+    assert.equal(all[0].durationSecs, 0);
+  });
+});

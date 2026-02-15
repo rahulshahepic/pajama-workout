@@ -327,12 +327,27 @@ body {
 }
 #streak-banner.visible { display: block; }
 
-/* ── History button on picker ──────────────────────────────── */
-.btn-history {
+/* ── Picker action buttons (History + Sync) ───────────────── */
+#picker-actions {
+  display: flex;
+  gap: 12px;
   margin-top: 24px;
+}
+.btn-history,
+.btn-sync {
   padding: 10px 28px;
   font-size: 12px;
   letter-spacing: 2px;
+}
+
+/* ── Sync status text ─────────────────────────────────────── */
+.sync-status {
+  display: none;
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.5px;
+  margin-top: 10px;
+  text-align: center;
 }
 
 /* ── History screen ────────────────────────────────────────── */
