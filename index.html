@@ -30,15 +30,53 @@
 
   <!-- ═══ Picker screen ═══ -->
   <div id="picker-screen">
-    <div id="picker-title">Pajama Workout</div>
+    <div id="picker-header">
+      <div id="picker-title">Pajama Workout</div>
+      <button id="btn-settings" aria-label="Settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
     <div id="picker-subtitle">Pick a routine</div>
+    <div id="sync-status-line" class="sync-status-line"></div>
     <div id="streak-banner"></div>
     <div id="workout-list"></div>
     <div id="picker-actions">
       <button class="btn btn-secondary btn-history" id="btn-history">HISTORY</button>
-      <button class="btn btn-secondary btn-sync" id="btn-sync">SYNC</button>
     </div>
-    <div id="sync-status" class="sync-status"></div>
+  </div>
+
+  <!-- ═══ Settings panel (bottom sheet) ═══ -->
+  <div id="settings-backdrop"></div>
+  <div id="settings-panel">
+    <div class="settings-handle"></div>
+    <div class="settings-title">Settings</div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">SESSION LENGTH</div>
+      <div class="settings-multiplier">
+        <span id="multiplier-label">1&times;</span>
+        <input type="range" id="multiplier-slider" min="0.5" max="3" step="0.25" value="1">
+        <div class="multiplier-ticks">
+          <span>.5</span><span>.75</span><span>1</span><span>1.25</span><span>1.5</span><span>2</span><span>2.5</span><span>3</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">VOICE CUES</div>
+      <label class="settings-toggle">
+        <input type="checkbox" id="tts-toggle">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Announce exercises</span>
+      </label>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">ACCOUNT</div>
+      <div id="settings-account"></div>
+    </div>
   </div>
 
   <!-- ═══ History screen ═══ -->
