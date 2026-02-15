@@ -21,16 +21,18 @@
   let wakeLock     = null;
   let currentWorkoutId = null;
   let sessionMultiplier = 1;      // per-workout override (defaults from settings)
+  let sessionRestMultiplier = 1;  // per-workout rest override
 
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
-  let settings = { multiplier: 1, tts: false, weeklyGoal: 3, ambient: false };
+  let settings = { multiplier: 1, restMultiplier: 1, tts: false, weeklyGoal: 3, ambient: false };
 
   function loadSettings() {
     try {
       var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
       if (s && typeof s === "object") {
         settings.multiplier = typeof s.multiplier === "number" ? s.multiplier : 1;
+        settings.restMultiplier = typeof s.restMultiplier === "number" ? s.restMultiplier : 1;
         settings.tts = !!s.tts;
         settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
         settings.ambient = !!s.ambient;
@@ -86,6 +88,8 @@
       settingsAccount:   $("settings-account"),
       multiplierSlider:  $("multiplier-slider"),
       multiplierLabel:   $("multiplier-label"),
+      restMultSlider:    $("rest-multiplier-slider"),
+      restMultLabel:     $("rest-multiplier-label"),
       ttsToggle:         $("tts-toggle"),
       ambientToggle:     $("ambient-toggle"),
       goalLabel:         $("goal-label"),
@@ -125,14 +129,15 @@
     return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   }
 
-  function summarise(phasesArr, mult) {
+  function summarise(phasesArr, mult, restMult) {
     let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
     var m = mult || 1;
+    var rm = restMult || m;
     for (const p of phasesArr) {
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
       if (p.type === "yoga") yogaCount++;
-      total += Math.round(p.duration * m);
+      total += Math.round(p.duration * (p.type === "rest" ? rm : m));
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
@@ -591,7 +596,7 @@
         card.style.borderLeftWidth = "3px";
         card.style.borderLeftColor = cat.color;
       }
-      var meta = summarise(w.phases, m);
+      var meta = summarise(w.phases, m, settings.restMultiplier);
       var catLabel = cat ? `<span class="workout-card-cat" style="color:${cat.color}">${cat.label}</span>` : "";
       var desc = w.description ? `<div class="workout-card-desc">${w.description}</div>` : "";
       card.innerHTML =
@@ -888,26 +893,31 @@
     if (!currentWorkoutId) return;
     var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
+    var rm = sessionRestMultiplier;
     phases = filterHidden(currentWorkoutId, w.phases).map(function (p) {
-      return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
+      var mult = p.type === "rest" ? rm : m;
+      return { name: p.name, type: p.type, duration: Math.round(p.duration * mult), hint: p.hint };
     });
     totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
     timeLeft = phases[0].duration;
 
     // Update ready screen display
     els.timerDisplay.textContent = fmt(phases[0].duration);
-    els.counterLabel.textContent = summarise(w.phases, m);
+    els.counterLabel.textContent = summarise(w.phases, m, sessionRestMultiplier);
     els.sessionMultLabel.innerHTML = fmtMultiplier(m);
   }
 
   function selectWorkout(id, push) {
     currentWorkoutId = id;
     sessionMultiplier = settings.multiplier;
+    sessionRestMultiplier = settings.restMultiplier;
     const w = allWorkouts()[id];
     var m = sessionMultiplier;
+    var rm = sessionRestMultiplier;
     var filtered = filterHidden(id, w.phases);
     phases = filtered.map(function (p) {
-      return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
+      var mult = p.type === "rest" ? rm : m;
+      return { name: p.name, type: p.type, duration: Math.round(p.duration * mult), hint: p.hint };
     });
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
@@ -931,7 +941,7 @@
     els.timerRing.setAttribute("stroke-dashoffset", RING_CIRCUMFERENCE);
     els.timerDisplay.textContent = fmt(phases[0].duration);
     els.sectionLabel.textContent = "Ready";
-    els.counterLabel.textContent = summarise(w.phases, m);
+    els.counterLabel.textContent = summarise(w.phases, m, sessionRestMultiplier);
     els.exerciseName.textContent = w.title;
     els.exerciseHint.textContent = w.subtitle;
     els.upnextContainer.style.display = "none";
@@ -1239,6 +1249,8 @@
     renderSettingsAccount();
     els.multiplierSlider.value = settings.multiplier;
     els.multiplierLabel.innerHTML = fmtMultiplier(settings.multiplier);
+    els.restMultSlider.value = settings.restMultiplier;
+    els.restMultLabel.innerHTML = fmtMultiplier(settings.restMultiplier);
     els.ttsToggle.checked = settings.tts;
     els.ambientToggle.checked = settings.ambient;
     els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
@@ -1452,6 +1464,15 @@
     els.multiplierSlider.addEventListener("change", function () {
       saveSettings();
       buildPicker();   // update displayed times
+    });
+
+    els.restMultSlider.addEventListener("input", function () {
+      var v = parseFloat(this.value);
+      settings.restMultiplier = v;
+      els.restMultLabel.innerHTML = fmtMultiplier(v);
+    });
+    els.restMultSlider.addEventListener("change", function () {
+      saveSettings();
     });
 
     els.ttsToggle.addEventListener("change", function () {
