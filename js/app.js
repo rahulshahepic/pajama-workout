@@ -59,6 +59,7 @@
       wakeIndicator: $("wake-indicator"),
       btnSync:       $("btn-sync"),
       syncStatus:    $("sync-status"),
+      syncSignout:   $("sync-signout"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -586,14 +587,15 @@
       els.btnSync.style.display = "none";
       return;
     }
+    els.btnSync.textContent = "SYNC";
     if (SyncManager.isSignedIn()) {
       const email = SyncManager.getEmail();
-      els.btnSync.textContent = "SIGN OUT";
       els.syncStatus.textContent = email ? "Synced \u00B7 " + email : "Synced";
       els.syncStatus.style.display = "block";
+      els.syncSignout.style.display = "block";
     } else {
-      els.btnSync.textContent = "SYNC";
       els.syncStatus.style.display = "none";
+      els.syncSignout.style.display = "none";
     }
   }
 
@@ -616,11 +618,10 @@
   async function handleSyncButton() {
     if (!syncAvailable()) return;
     if (SyncManager.isSignedIn()) {
-      SyncManager.signOut();
-      updateSyncUI();
+      await syncAndUpdateUI();
     } else {
       try {
-        els.syncStatus.textContent = "Redirecting\u2026";
+        els.syncStatus.textContent = "Redirecting to Google\u2026";
         els.syncStatus.style.display = "block";
         await SyncManager.signIn();
       } catch (e) {
@@ -629,6 +630,13 @@
         setTimeout(updateSyncUI, 3000);
       }
     }
+  }
+
+  function handleSignOut(e) {
+    e.preventDefault();
+    if (!syncAvailable()) return;
+    SyncManager.signOut();
+    updateSyncUI();
   }
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -689,6 +697,7 @@
       renderHistory();
     });
     els.btnSync.addEventListener("click", handleSyncButton);
+    els.syncSignout.addEventListener("click", handleSignOut);
 
     // Seed the initial history entry so there's something to go "back" to
     history.replaceState({ screen: "picker" }, "");
