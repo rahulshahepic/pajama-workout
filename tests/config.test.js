@@ -8,7 +8,7 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, THEME, DONE_THEME, SOUNDS } = require("../js/config.js");
+const { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME } = require("../js/config.js");
 
 const VALID_TYPES = new Set(["work", "rest", "stretch"]);
 
@@ -124,4 +124,24 @@ describe("SOUNDS", () => {
       assert.ok(Number.isInteger(s[2]) && s[2] > 0, "count is positive int");
     });
   }
+});
+
+describe("Google Sync config", () => {
+  it("GOOGLE_CLIENT_ID is a non-empty string", () => {
+    assert.equal(typeof GOOGLE_CLIENT_ID, "string");
+    assert.ok(GOOGLE_CLIENT_ID.length > 0);
+  });
+
+  it("GOOGLE_CLIENT_ID looks like a Google OAuth client ID", () => {
+    assert.ok(GOOGLE_CLIENT_ID.includes(".apps.googleusercontent.com"));
+  });
+
+  it("GOOGLE_SCOPES includes drive.appdata", () => {
+    assert.ok(GOOGLE_SCOPES.includes("drive.appdata"));
+  });
+
+  it("SYNC_FILE_NAME is a non-empty string ending in .json", () => {
+    assert.equal(typeof SYNC_FILE_NAME, "string");
+    assert.ok(SYNC_FILE_NAME.endsWith(".json"));
+  });
 });

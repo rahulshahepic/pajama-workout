@@ -14,7 +14,12 @@
  */
 
 /** Bump this when any cached asset changes.  SW uses it for cache-busting. */
-const APP_VERSION = 10;
+const APP_VERSION = 11;
+
+/** Google OAuth — public identifier, not a secret.  Change if you fork. */
+const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
+const GOOGLE_SCOPES    = "https://www.googleapis.com/auth/drive.appdata openid email";
+const SYNC_FILE_NAME   = "pajama-workout-history.json";
 
 const WORKOUTS = {
   /* ── Default 5 + 5 routine ──────────────────────────────────── */
@@ -207,5 +212,5 @@ const SOUNDS = {
 
 // Allow Node.js test imports while keeping browser globals working
 if (typeof module !== "undefined") {
-  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS };
+  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
 }
