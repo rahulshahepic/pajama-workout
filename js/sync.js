@@ -19,8 +19,9 @@ const SyncManager = (function () {
   "use strict";
 
   // ── Constants ──────────────────────────────────────────────────
-  const TOKEN_KEY   = "pajama-sync-tokens";
-  const VERIFIER_KEY = "pajama-sync-verifier";
+  const TOKEN_KEY      = "pajama-sync-tokens";
+  const VERIFIER_KEY   = "pajama-sync-verifier";
+  const REDIRECT_KEY   = "pajama-sync-redirect-uri";
   const TOKEN_URL   = "https://oauth2.googleapis.com/token";
   const AUTH_URL    = "https://accounts.google.com/o/oauth2/v2/auth";
   const DRIVE_API   = "https://www.googleapis.com/drive/v3";
@@ -106,11 +107,13 @@ const SyncManager = (function () {
   async function signIn() {
     const verifier  = generateVerifier();
     const challenge = await computeChallenge(verifier);
+    const redirectUri = getRedirectUri();
     localStorage.setItem(VERIFIER_KEY, verifier);
+    localStorage.setItem(REDIRECT_KEY, redirectUri);
 
     const params = new URLSearchParams({
       client_id:             GOOGLE_CLIENT_ID,
-      redirect_uri:          getRedirectUri(),
+      redirect_uri:          redirectUri,
       response_type:         "code",
       scope:                 GOOGLE_SCOPES,
       code_challenge:        challenge,
@@ -139,8 +142,10 @@ const SyncManager = (function () {
     const code = params.get("code");
     if (!code) return { wasRedirect: false, ok: false };
 
-    const verifier = localStorage.getItem(VERIFIER_KEY);
+    const verifier    = localStorage.getItem(VERIFIER_KEY);
+    const redirectUri = localStorage.getItem(REDIRECT_KEY);
     localStorage.removeItem(VERIFIER_KEY);
+    localStorage.removeItem(REDIRECT_KEY);
     if (!verifier) {
       cleanUrl();
       return { wasRedirect: true, ok: false, error: "missing_verifier" };
@@ -155,7 +160,7 @@ const SyncManager = (function () {
           code:          code,
           code_verifier: verifier,
           grant_type:    "authorization_code",
-          redirect_uri:  getRedirectUri(),
+          redirect_uri:  redirectUri || getRedirectUri(),
         }),
       });
 
