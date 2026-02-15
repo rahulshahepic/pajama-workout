@@ -46,6 +46,50 @@ const WORKOUTS = {
     ],
   },
 
+  /* ── Rotator Cuff / Shoulder Impingement Stretches ──────────── */
+  "rotator-cuff": {
+    id: "rotator-cuff",
+    title: "Rotator Cuff Rescue",
+    subtitle: "~10 min shoulder stretches for impingement relief",
+    phases: [
+      // ─── Warm-up ───
+      { name: "Pendulum Swings — L",       type: "work",    duration: 30, hint: "Lean on a table, let arm hang & swing small circles" },
+      { name: "Pendulum Swings — R",       type: "work",    duration: 30, hint: "Relax the shoulder, let gravity do the work" },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Roll your shoulders back a few times" },
+
+      // ─── Cross-body & posterior capsule ───
+      { name: "Cross-Body Stretch — L",    type: "stretch", duration: 30, hint: "Pull left arm across chest with right hand, keep shoulder down" },
+      { name: "Cross-Body Stretch — R",    type: "stretch", duration: 30, hint: "Same thing, other side — don't shrug up" },
+      { name: "Sleeper Stretch — L",       type: "stretch", duration: 30, hint: "Lie on left side, arm at 90°, gently push wrist toward floor" },
+      { name: "Sleeper Stretch — R",       type: "stretch", duration: 30, hint: "Easy pressure — stop before any sharp pain" },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Shake out your arms" },
+
+      // ─── Doorframe / pec opening ───
+      { name: "Doorframe Stretch — Low",   type: "stretch", duration: 30, hint: "Forearm on frame at waist height, lean through & open chest" },
+      { name: "Doorframe Stretch — Mid",   type: "stretch", duration: 30, hint: "Elbow at shoulder height, step through gently" },
+      { name: "Doorframe Stretch — High",  type: "stretch", duration: 30, hint: "Hand above head on frame, lean forward to stretch upper pec" },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Let your arms hang loose" },
+
+      // ─── External rotation & strengthening ───
+      { name: "Wall Slide",               type: "work",    duration: 30, hint: "Back to wall, arms in W, slide up to Y and back — slow" },
+      { name: "Rest",                      type: "rest",    duration: 10, hint: "Quick breather" },
+      { name: "Prone Y-T-W",              type: "work",    duration: 40, hint: "Face down, lift arms into Y, T, then W — squeeze shoulder blades" },
+      { name: "Rest",                      type: "rest",    duration: 15, hint: "Almost done with the work" },
+
+      // ─── Lat & upper trap release ───
+      { name: "Overhead Lat Stretch — L",  type: "stretch", duration: 30, hint: "Grab a doorframe overhead, lean away to stretch the lat" },
+      { name: "Overhead Lat Stretch — R",  type: "stretch", duration: 30, hint: "Tight lats pull the shoulder forward — this helps" },
+      { name: "Upper Trap Stretch — L",    type: "stretch", duration: 25, hint: "Tilt head right, gently pull with right hand, left arm relaxed" },
+      { name: "Upper Trap Stretch — R",    type: "stretch", duration: 25, hint: "Ear toward shoulder — breathe into the tight side" },
+      { name: "Rest",                      type: "rest",    duration: 10, hint: "One more to go" },
+
+      // ─── Cool-down ───
+      { name: "Thread the Needle — L",     type: "stretch", duration: 30, hint: "On all fours, slide left arm under & rotate — opens the thoracic spine" },
+      { name: "Thread the Needle — R",     type: "stretch", duration: 30, hint: "Let your chest melt toward the floor" },
+      { name: "Child's Pose w/ Reach",     type: "stretch", duration: 40, hint: "Walk hands forward, sink hips back, forehead down. You showed up." },
+    ],
+  },
+
   /* ── Quick 5 min — no stretches ─────────────────────────────── */
   "quick-five": {
     id: "quick-five",
