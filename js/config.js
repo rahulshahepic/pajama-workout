@@ -22,11 +22,23 @@ const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.goo
 const GOOGLE_SCOPES    = "https://www.googleapis.com/auth/drive.appdata openid email";
 const SYNC_FILE_NAME   = "pajama-workout-history.json";
 
+/**
+ * Workout categories — used for colour-coded picker cards.
+ * Each: { label, color } where color is used for the left-border accent.
+ */
+const CATEGORIES = {
+  strength: { label: "Strength",  color: "#4ECDC4" },
+  mobility: { label: "Mobility",  color: "#A8D08D" },
+  yoga:     { label: "Yoga",      color: "#E8A44A" },
+  quick:    { label: "Quick",     color: "#8B85FF" },
+};
+
 const WORKOUTS = {
   /* ── Default 5 + 5 routine ──────────────────────────────────── */
   "pajama-classic": {
     id: "pajama-classic",
     title: "Pajama Workout",
+    category: "strength",
     subtitle: "5 min workout + 5 min stretch",
     description: "Full-body basics you can do in your pajamas, plus a deep stretch cool-down.",
     phases: [
@@ -60,6 +72,7 @@ const WORKOUTS = {
   "rotator-cuff": {
     id: "rotator-cuff",
     title: "Rotator Cuff Rescue",
+    category: "mobility",
     subtitle: "~10 min shoulder stretches for impingement relief",
     description: "Targeted stretches and gentle strengthening for cranky shoulders and impingement.",
     phases: [
@@ -105,6 +118,7 @@ const WORKOUTS = {
   "lower-back-hips": {
     id: "lower-back-hips",
     title: "Lower Back & Hips",
+    category: "mobility",
     subtitle: "~10 min to loosen up the whole posterior chain",
     description: "Gentle mobility work for tight hips, stiff lower back, and the whole posterior chain.",
     phases: [
@@ -145,6 +159,7 @@ const WORKOUTS = {
   "keyboard-warrior": {
     id: "keyboard-warrior",
     title: "Keyboard Warrior",
+    category: "quick",
     subtitle: "1 min neck, shoulders & arms — no excuses",
     description: "A quick desk reset for neck, shoulders, and wrists. Do it between meetings.",
     phases: [
@@ -161,6 +176,7 @@ const WORKOUTS = {
   "morning-flow": {
     id: "morning-flow",
     title: "Morning Flow",
+    category: "yoga",
     subtitle: "~10 min sun salutation + standing poses",
     description: "Wake up your body with a gentle vinyasa-inspired flow. No equipment needed.",
     phases: [
@@ -186,6 +202,7 @@ const WORKOUTS = {
   "wind-down-yoga": {
     id: "wind-down-yoga",
     title: "Wind-Down Yoga",
+    category: "yoga",
     subtitle: "~12 min gentle floor poses for sleep",
     description: "Slow, restorative poses to calm your nervous system before bed. All on the floor.",
     phases: [
@@ -209,6 +226,7 @@ const WORKOUTS = {
   "quick-five": {
     id: "quick-five",
     title: "Quick Five",
+    category: "strength",
     subtitle: "5 minutes, no excuses",
     description: "Five exercises, no stretches, no rest longer than 20 seconds. Just get it done.",
     phases: [
@@ -267,5 +285,5 @@ const SOUNDS = {
 
 // Allow Node.js test imports while keeping browser globals working
 if (typeof module !== "undefined") {
-  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
+  module.exports = { APP_VERSION, WORKOUTS, CATEGORIES, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
 }

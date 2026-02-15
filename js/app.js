@@ -502,10 +502,16 @@
       const w    = WORKOUTS[key];
       const card = document.createElement("div");
       card.className = "workout-card";
+      var cat = (typeof CATEGORIES !== "undefined" && w.category && CATEGORIES[w.category]) ? CATEGORIES[w.category] : null;
+      if (cat) {
+        card.style.borderLeftWidth = "3px";
+        card.style.borderLeftColor = cat.color;
+      }
       var meta = summarise(w.phases, m);
+      var catLabel = cat ? `<span class="workout-card-cat" style="color:${cat.color}">${cat.label}</span>` : "";
       var desc = w.description ? `<div class="workout-card-desc">${w.description}</div>` : "";
       card.innerHTML =
-        `<div class="workout-card-title">${w.title}</div>` +
+        `<div class="workout-card-title">${w.title}${catLabel}</div>` +
         `<div class="workout-card-meta">${meta}</div>` +
         desc;
       card.addEventListener("click", () => selectWorkout(key));
