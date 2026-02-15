@@ -142,6 +142,42 @@ body {
   line-height: 1.5;
 }
 
+/* ── Per-session multiplier (Ready screen) ────────────────── */
+#session-multiplier {
+  display: none;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  z-index: 1;
+}
+#session-multiplier.visible { display: flex; }
+#session-mult-label {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--accent);
+  min-width: 52px;
+  text-align: center;
+}
+.mult-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.5);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mult-btn:hover { background: rgba(255,255,255,0.1); }
+.mult-btn:active { transform: scale(0.92); }
+
 /* ── Controls ──────────────────────────────────────────────── */
 #controls {
   display: flex;
@@ -616,12 +652,16 @@ body {
   border: 2px solid #1e2a3a;
 }
 .multiplier-ticks {
-  display: flex;
-  justify-content: space-between;
+  position: relative;
+  height: 16px;
   margin-top: 6px;
   font-size: 9px;
   color: rgba(255,255,255,0.2);
   font-family: var(--mono);
+}
+.multiplier-ticks span {
+  position: absolute;
+  transform: translateX(-50%);
 }
 
 /* ── Toggle switch ────────────────────────────────────────── */
