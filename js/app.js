@@ -106,6 +106,7 @@
       btnAddStretch:     $("btn-add-stretch"),
       btnAddYoga:        $("btn-add-yoga"),
       btnSaveWorkout:    $("btn-save-workout"),
+      btnShare:          $("btn-share"),
       phaseListContainer:$("phase-list-container"),
       phaseList:         $("phase-list"),
       swapBackdrop:      $("swap-backdrop"),
@@ -350,6 +351,7 @@
     els.upnextContainer.style.display = "none";
     els.sessionMultiplier.classList.remove("visible");
     els.phaseListContainer.classList.remove("visible");
+    els.btnShare.style.display = "none";
     showButtons("done");
     releaseWakeLock();
     stopAmbient();
@@ -421,6 +423,7 @@
     els.doneCheck.style.display      = "none";
     els.sessionMultiplier.classList.remove("visible");
     els.phaseListContainer.classList.remove("visible");
+    els.btnShare.style.display = "none";
 
     const cdSecs = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 0;
     if (cdSecs > 0) {
@@ -935,6 +938,7 @@
     els.sessionMultiplier.classList.add("visible");
     els.sessionMultLabel.innerHTML = fmtMultiplier(m);
     els.phaseListContainer.classList.add("visible");
+    els.btnShare.style.display = "inline-block";
     renderPhaseList();
     showButtons("idle");
   }
@@ -1254,6 +1258,83 @@
     return s + "\u00D7";
   }
 
+  // ── Share workout (URL hash) ────────────────────────────────
+  function encodeWorkout(w) {
+    var compact = {
+      t: w.title,
+      p: w.phases.map(function (ph) {
+        return [ph.name, ph.type, ph.duration, ph.hint || ""];
+      }),
+    };
+    return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
+  }
+
+  function decodeWorkout(hash) {
+    try {
+      var json = decodeURIComponent(escape(atob(hash)));
+      var compact = JSON.parse(json);
+      if (!compact.t || !compact.p || !compact.p.length) return null;
+      return {
+        title: compact.t,
+        phases: compact.p.map(function (a) {
+          return { name: a[0], type: a[1], duration: a[2], hint: a[3] || "" };
+        }),
+      };
+    } catch (_) { return null; }
+  }
+
+  function shareCurrentWorkout() {
+    if (!currentWorkoutId) return;
+    var w = allWorkouts()[currentWorkoutId];
+    if (!w) return;
+    var hash = encodeWorkout(w);
+    var url = location.origin + location.pathname + "#w=" + hash;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function () {
+        showShareToast("Link copied!");
+      }).catch(function () {
+        showShareToast(url);
+      });
+    } else {
+      prompt("Share this URL:", url);
+    }
+  }
+
+  function showShareToast(msg) {
+    var toast = document.createElement("div");
+    toast.className = "share-toast";
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.classList.add("visible"); }, 10);
+    setTimeout(function () {
+      toast.classList.remove("visible");
+      setTimeout(function () { toast.remove(); }, 300);
+    }, 2000);
+  }
+
+  function checkImportHash() {
+    var hash = location.hash;
+    if (!hash || !hash.startsWith("#w=")) return false;
+    var data = decodeWorkout(hash.slice(3));
+    if (!data) return false;
+
+    // Import as a custom workout
+    var id = "import-" + Date.now();
+    customWorkouts[id] = {
+      id: id,
+      title: data.title,
+      category: "custom",
+      subtitle: "Imported workout",
+      description: "",
+      custom: true,
+      phases: data.phases,
+    };
+    saveCustomWorkouts();
+    // Clear the hash
+    history.replaceState(null, "", location.pathname);
+    return id;
+  }
+
   // ── Keyboard shortcuts ──────────────────────────────────────
   document.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
@@ -1307,9 +1388,14 @@
     loadCustomWorkouts();
     loadSkipData();
 
+    // Check for shared workout import
+    var importedId = checkImportHash();
+
     // If only one workout, skip picker and go straight to it
     var workoutKeys = Object.keys(allWorkouts());
-    if (workoutKeys.length === 1) {
+    if (importedId) {
+      selectWorkout(importedId);
+    } else if (workoutKeys.length === 1) {
       selectWorkout(workoutKeys[0]);
     } else {
       showPicker(false);
@@ -1340,6 +1426,7 @@
     els.btnAddStretch.addEventListener("click", function () { addBuilderPhase("stretch"); });
     els.btnAddYoga.addEventListener("click", function () { addBuilderPhase("yoga"); });
     els.btnSaveWorkout.addEventListener("click", saveCustomWorkout);
+    els.btnShare.addEventListener("click", shareCurrentWorkout);
 
     // ── Per-session multiplier (+/−) ──────────────────────────
     els.btnMultDown.addEventListener("click", function () {
