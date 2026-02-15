@@ -21,17 +21,21 @@
   let wakeLock     = null;
   let currentWorkoutId = null;
   let sessionMultiplier = 1;      // per-workout override (defaults from settings)
+  let sessionRestMultiplier = 1;  // per-workout rest override
 
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
-  let settings = { multiplier: 1, tts: false };
+  let settings = { multiplier: 1, restMultiplier: 1, tts: false, weeklyGoal: 3, ambient: false };
 
   function loadSettings() {
     try {
       var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
       if (s && typeof s === "object") {
         settings.multiplier = typeof s.multiplier === "number" ? s.multiplier : 1;
+        settings.restMultiplier = typeof s.restMultiplier === "number" ? s.restMultiplier : 1;
         settings.tts = !!s.tts;
+        settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
+        settings.ambient = !!s.ambient;
       }
     } catch (_) {}
   }
@@ -73,7 +77,9 @@
       btnClearHistory:$("btn-clear-history"),
       btnHome:       $("btn-home"),
       historyStats:  $("history-stats"),
+      historyHeatmap:$("history-heatmap"),
       historyList:   $("history-list"),
+      goalRingContainer: $("goal-ring-container"),
       streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
       btnSettings:       $("btn-settings"),
@@ -82,12 +88,35 @@
       settingsAccount:   $("settings-account"),
       multiplierSlider:  $("multiplier-slider"),
       multiplierLabel:   $("multiplier-label"),
+      restMultSlider:    $("rest-multiplier-slider"),
+      restMultLabel:     $("rest-multiplier-label"),
       ttsToggle:         $("tts-toggle"),
+      ambientToggle:     $("ambient-toggle"),
+      goalLabel:         $("goal-label"),
+      btnGoalDown:       $("btn-goal-down"),
+      btnGoalUp:         $("btn-goal-up"),
       syncStatusLine:    $("sync-status-line"),
       sessionMultiplier: $("session-multiplier"),
       sessionMultLabel:  $("session-mult-label"),
       btnMultDown:       $("btn-mult-down"),
       btnMultUp:         $("btn-mult-up"),
+      builderScreen:     $("builder-screen"),
+      btnBuilderBack:    $("btn-builder-back"),
+      btnCreate:         $("btn-create"),
+      builderName:       $("builder-name"),
+      builderPhases:     $("builder-phases"),
+      btnAddWork:        $("btn-add-work"),
+      btnAddRest:        $("btn-add-rest"),
+      btnAddStretch:     $("btn-add-stretch"),
+      btnAddYoga:        $("btn-add-yoga"),
+      btnSaveWorkout:    $("btn-save-workout"),
+      btnShare:          $("btn-share"),
+      phaseListContainer:$("phase-list-container"),
+      phaseList:         $("phase-list"),
+      swapBackdrop:      $("swap-backdrop"),
+      swapPanel:         $("swap-panel"),
+      swapCurrent:       $("swap-current"),
+      swapOptions:       $("swap-options"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -100,17 +129,20 @@
     return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   }
 
-  function summarise(phasesArr, mult) {
-    let workCount = 0, stretchCount = 0, total = 0;
+  function summarise(phasesArr, mult, restMult) {
+    let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
     var m = mult || 1;
+    var rm = restMult || m;
     for (const p of phasesArr) {
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
-      total += Math.round(p.duration * m);
+      if (p.type === "yoga") yogaCount++;
+      total += Math.round(p.duration * (p.type === "rest" ? rm : m));
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
-    if (workCount)   parts.push(`${workCount} exercises`);
+    if (workCount)    parts.push(`${workCount} exercises`);
+    if (yogaCount)    parts.push(`${yogaCount} poses`);
     if (stretchCount) parts.push(`${stretchCount} stretches`);
     return parts.join(" \u00B7 ");
   }
@@ -158,6 +190,48 @@
     if (window.speechSynthesis) speechSynthesis.cancel();
   }
 
+  // ── Ambient drone (oscillator-based) ────────────────────────
+  var ambientNodes = null;
+
+  function startAmbient() {
+    if (!settings.ambient || ambientNodes) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var gain = audioCtx.createGain();
+      gain.gain.value = 0.03;
+      gain.connect(audioCtx.destination);
+
+      // Layer two detuned oscillators for a warm pad
+      var osc1 = audioCtx.createOscillator();
+      osc1.type = "sine";
+      osc1.frequency.value = 110;  // A2
+      osc1.connect(gain);
+      osc1.start();
+
+      var osc2 = audioCtx.createOscillator();
+      osc2.type = "sine";
+      osc2.frequency.value = 165;  // E3 (a fifth above)
+      osc2.detune.value = -5;
+      osc2.connect(gain);
+      osc2.start();
+
+      ambientNodes = { gain: gain, osc1: osc1, osc2: osc2 };
+    } catch (_) {}
+  }
+
+  function stopAmbient() {
+    if (!ambientNodes) return;
+    try {
+      ambientNodes.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+      var nodes = ambientNodes;
+      setTimeout(function () {
+        nodes.osc1.stop();
+        nodes.osc2.stop();
+      }, 600);
+    } catch (_) {}
+    ambientNodes = null;
+  }
+
   // ── Wake Lock (keeps screen on during workout) ──────────────
   async function requestWakeLock() {
     try {
@@ -202,11 +276,17 @@
   function sectionFor(idx) {
     const p = phases[idx];
     if (p.type === "stretch") return "Stretches";
+    if (p.type === "yoga") return "Yoga";
     return "Workout";
   }
 
   function counterFor(idx) {
     const p = phases[idx];
+    if (p.type === "yoga") {
+      const yogaPhases = phases.filter(x => x.type === "yoga");
+      const num = yogaPhases.indexOf(p) + 1;
+      return `Pose ${num} of ${yogaPhases.length}`;
+    }
     if (p.type === "work" || p.type === "rest") {
       const workPhases = phases.filter(x => x.type === "work");
       const exNum = Math.floor(idx / 2) + 1;
@@ -275,11 +355,14 @@
     els.progressFill.style.background = DONE_THEME.accent;
     els.upnextContainer.style.display = "none";
     els.sessionMultiplier.classList.remove("visible");
+    els.phaseListContainer.classList.remove("visible");
+    els.btnShare.style.display = "none";
     showButtons("done");
     releaseWakeLock();
+    stopAmbient();
 
     // Record to history
-    const w = WORKOUTS[currentWorkoutId];
+    const w = allWorkouts()[currentWorkoutId];
     WorkoutHistory.record({
       workoutId:       currentWorkoutId,
       title:           w.title,
@@ -288,6 +371,9 @@
       phasesTotal:     phases.length,
       multiplier:      sessionMultiplier,
     });
+
+    // Check if we should offer to hide frequently-skipped exercises
+    checkHidePrompt();
 
     // Sync to cloud (fire-and-forget)
     if (SyncManager.isSignedIn()) SyncManager.sync().catch(() => {});
@@ -341,6 +427,8 @@
     els.timerContainer.style.display = "block";
     els.doneCheck.style.display      = "none";
     els.sessionMultiplier.classList.remove("visible");
+    els.phaseListContainer.classList.remove("visible");
+    els.btnShare.style.display = "none";
 
     const cdSecs = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 0;
     if (cdSecs > 0) {
@@ -404,6 +492,7 @@
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     requestWakeLock();
+    startAmbient();
   }
 
   function pause() {
@@ -411,6 +500,7 @@
     clearInterval(interval);
     showButtons("paused");
     releaseWakeLock();
+    stopAmbient();
   }
 
   function resume() {
@@ -419,11 +509,13 @@
     clearInterval(interval);
     interval = setInterval(tick, 1000);
     requestWakeLock();
+    startAmbient();
   }
 
   function reset() {
     clearInterval(interval);
     cancelSpeech();
+    stopAmbient();
     state = "idle";
     countdownLeft = 0;
     releaseWakeLock();
@@ -442,6 +534,8 @@
     if (state === "countdown") { skipCountdown(); return; }
     if (state !== "running" && state !== "paused") return;
     cancelSpeech();
+    // Record the skip for memory
+    recordSkip(phases[phaseIndex].name);
     // consume remaining time of current phase
     elapsed += timeLeft;
     const next = phaseIndex + 1;
@@ -470,6 +564,7 @@
     els.pickerScreen.classList.add("active");
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
+    els.builderScreen.classList.remove("active");
 
     applyTheme("idle");
     els.progressFill.style.width = "0%";
@@ -477,6 +572,7 @@
     if (push) history.pushState({ screen: "picker" }, "");
 
     buildPicker();
+    renderGoalRing();
     updateStreakBanner();
   }
 
@@ -484,20 +580,27 @@
     const container = $("workout-list");
     container.innerHTML = "";
     var m = settings.multiplier;
+    var all = allWorkouts();
 
     // Sort by duration (shortest first)
-    const sorted = Object.keys(WORKOUTS).sort(
-      (a, b) => workoutDuration(WORKOUTS[a], m) - workoutDuration(WORKOUTS[b], m)
+    const sorted = Object.keys(all).sort(
+      (a, b) => workoutDuration(all[a], m) - workoutDuration(all[b], m)
     );
 
     for (const key of sorted) {
-      const w    = WORKOUTS[key];
+      const w    = all[key];
       const card = document.createElement("div");
       card.className = "workout-card";
-      var meta = summarise(w.phases, m);
+      var cat = (typeof CATEGORIES !== "undefined" && w.category && CATEGORIES[w.category]) ? CATEGORIES[w.category] : null;
+      if (cat) {
+        card.style.borderLeftWidth = "3px";
+        card.style.borderLeftColor = cat.color;
+      }
+      var meta = summarise(w.phases, m, settings.restMultiplier);
+      var catLabel = cat ? `<span class="workout-card-cat" style="color:${cat.color}">${cat.label}</span>` : "";
       var desc = w.description ? `<div class="workout-card-desc">${w.description}</div>` : "";
       card.innerHTML =
-        `<div class="workout-card-title">${w.title}</div>` +
+        `<div class="workout-card-title">${w.title}${catLabel}</div>` +
         `<div class="workout-card-meta">${meta}</div>` +
         desc;
       card.addEventListener("click", () => selectWorkout(key));
@@ -505,35 +608,322 @@
     }
   }
 
+  // ── Phase list & swap (Ready screen) ──────────────────────
+  var swapPhaseIndex = -1;   // which phase is being swapped
+
+  function renderPhaseList() {
+    els.phaseList.innerHTML = "";
+    var subs = typeof SUBSTITUTIONS !== "undefined" ? SUBSTITUTIONS : {};
+    for (var i = 0; i < phases.length; i++) {
+      var p = phases[i];
+      var div = document.createElement("div");
+      div.className = "phase-list-item";
+      if (p.type === "rest") {
+        div.classList.add("is-rest");
+        div.innerHTML = '<span>rest</span><span class="phase-dur">' + p.duration + 's</span>';
+      } else {
+        var canSwap = !!subs[p.name];
+        if (canSwap) div.classList.add("swappable");
+        div.innerHTML = '<span>' + p.name + '</span><span class="phase-dur">' + p.duration + 's</span>';
+        if (canSwap) {
+          (function (idx) {
+            div.addEventListener("click", function () { openSwap(idx); });
+          })(i);
+        }
+      }
+      els.phaseList.appendChild(div);
+    }
+  }
+
+  function openSwap(idx) {
+    var subs = typeof SUBSTITUTIONS !== "undefined" ? SUBSTITUTIONS : {};
+    var p = phases[idx];
+    var options = subs[p.name];
+    if (!options || !options.length) return;
+    swapPhaseIndex = idx;
+    els.swapCurrent.textContent = "Currently: " + p.name;
+    els.swapOptions.innerHTML = "";
+    for (var j = 0; j < options.length; j++) {
+      var opt = options[j];
+      var div = document.createElement("div");
+      div.className = "swap-option";
+      div.innerHTML = '<div class="swap-option-name">' + opt.name + '</div>' +
+        '<div class="swap-option-hint">' + opt.hint + '</div>';
+      (function (sub) {
+        div.addEventListener("click", function () { doSwap(sub); });
+      })(opt);
+      els.swapOptions.appendChild(div);
+    }
+    els.swapBackdrop.classList.add("open");
+    els.swapPanel.classList.add("open");
+  }
+
+  function closeSwap() {
+    els.swapBackdrop.classList.remove("open");
+    els.swapPanel.classList.remove("open");
+    swapPhaseIndex = -1;
+  }
+
+  function doSwap(sub) {
+    if (swapPhaseIndex < 0 || swapPhaseIndex >= phases.length) return;
+    phases[swapPhaseIndex].name = sub.name;
+    phases[swapPhaseIndex].hint = sub.hint;
+    closeSwap();
+    renderPhaseList();
+    // If we swapped the first exercise, update the Ready screen name display
+    if (swapPhaseIndex === 0) {
+      els.exerciseName.textContent = WORKOUTS[currentWorkoutId].title;
+    }
+  }
+
+  // ── Skip memory (localStorage) ─────────────────────────────
+  var SKIP_KEY = "pajama-skip-counts";
+  var HIDDEN_KEY = "pajama-hidden-exercises";
+  var skipCounts = {};   // { "exerciseName": count }
+  var hiddenExercises = {};   // { "workoutId:exerciseName": true }
+  var SKIP_THRESHOLD = 3;
+
+  function loadSkipData() {
+    try {
+      var sc = JSON.parse(localStorage.getItem(SKIP_KEY));
+      if (sc && typeof sc === "object") skipCounts = sc;
+    } catch (_) {}
+    try {
+      var he = JSON.parse(localStorage.getItem(HIDDEN_KEY));
+      if (he && typeof he === "object") hiddenExercises = he;
+    } catch (_) {}
+  }
+
+  function saveSkipCounts() {
+    try { localStorage.setItem(SKIP_KEY, JSON.stringify(skipCounts)); } catch (_) {}
+  }
+
+  function saveHiddenExercises() {
+    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenExercises)); } catch (_) {}
+  }
+
+  function recordSkip(exerciseName) {
+    if (!exerciseName || exerciseName === "Rest") return;
+    skipCounts[exerciseName] = (skipCounts[exerciseName] || 0) + 1;
+    saveSkipCounts();
+
+    if (skipCounts[exerciseName] === SKIP_THRESHOLD && currentWorkoutId) {
+      var key = currentWorkoutId + ":" + exerciseName;
+      if (!hiddenExercises[key]) {
+        // Show a subtle prompt after the workout (don't interrupt)
+        pendingHidePrompt = { key: key, name: exerciseName };
+      }
+    }
+  }
+
+  var pendingHidePrompt = null;
+
+  function checkHidePrompt() {
+    if (!pendingHidePrompt) return;
+    var p = pendingHidePrompt;
+    pendingHidePrompt = null;
+    // Render a small dismissible banner at the bottom of done screen
+    var banner = document.createElement("div");
+    banner.className = "hide-prompt";
+    banner.innerHTML =
+      '<span>You skip <strong>' + p.name + '</strong> often. Hide it?</span>' +
+      '<button class="hide-prompt-yes">HIDE</button>' +
+      '<button class="hide-prompt-no">KEEP</button>';
+    banner.querySelector(".hide-prompt-yes").addEventListener("click", function () {
+      hiddenExercises[p.key] = true;
+      saveHiddenExercises();
+      banner.remove();
+    });
+    banner.querySelector(".hide-prompt-no").addEventListener("click", function () {
+      // Reset count so we don't keep asking
+      skipCounts[p.name] = 0;
+      saveSkipCounts();
+      banner.remove();
+    });
+    els.timerScreen.appendChild(banner);
+  }
+
+  /** Filter out hidden exercises for a given workout. */
+  function filterHidden(workoutId, phasesArr) {
+    return phasesArr.filter(function (p) {
+      if (p.type === "rest") return true;
+      var key = workoutId + ":" + p.name;
+      return !hiddenExercises[key];
+    }).filter(function (p, i, arr) {
+      // Remove consecutive rests (orphaned by hiding the exercise before them)
+      if (p.type === "rest" && i > 0 && arr[i - 1].type === "rest") return false;
+      // Remove trailing rest
+      if (p.type === "rest" && i === arr.length - 1) return false;
+      // Remove leading rest
+      if (p.type === "rest" && i === 0) return false;
+      return true;
+    });
+  }
+
+  // ── Custom workouts (localStorage) ──────────────────────────
+  var CUSTOM_KEY = "pajama-custom-workouts";
+  var customWorkouts = {};
+
+  function loadCustomWorkouts() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(CUSTOM_KEY));
+      if (raw && typeof raw === "object") customWorkouts = raw;
+    } catch (_) {}
+  }
+
+  function saveCustomWorkouts() {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(customWorkouts)); } catch (_) {}
+  }
+
+  /** Merge built-in + custom workouts for the picker. */
+  function allWorkouts() {
+    var merged = {};
+    for (var k in WORKOUTS) merged[k] = WORKOUTS[k];
+    for (var c in customWorkouts) merged[c] = customWorkouts[c];
+    return merged;
+  }
+
+  // ── Builder screen ──────────────────────────────────────────
+  var builderPhaseList = [];
+  var editingWorkoutId = null;  // null = new, string = editing existing custom
+
+  function showBuilder(push, editId) {
+    editingWorkoutId = editId || null;
+    els.pickerScreen.classList.remove("active");
+    els.timerScreen.classList.remove("active");
+    els.historyScreen.classList.remove("active");
+    els.builderScreen.classList.add("active");
+    if (push !== false) history.pushState({ screen: "builder" }, "");
+
+    if (editId && customWorkouts[editId]) {
+      var w = customWorkouts[editId];
+      els.builderName.value = w.title;
+      builderPhaseList = w.phases.map(function (p) {
+        return { name: p.name, type: p.type, duration: p.duration, hint: p.hint || "" };
+      });
+    } else {
+      els.builderName.value = "";
+      builderPhaseList = [];
+    }
+    renderBuilderPhases();
+  }
+
+  function hideBuilder() {
+    history.back();
+  }
+
+  function addBuilderPhase(type) {
+    var defaults = { work: { name: "Exercise", duration: 40 }, rest: { name: "Rest", duration: 20 }, stretch: { name: "Stretch", duration: 30 }, yoga: { name: "Pose", duration: 30 } };
+    var d = defaults[type] || defaults.work;
+    builderPhaseList.push({ name: d.name, type: type, duration: d.duration, hint: "" });
+    renderBuilderPhases();
+  }
+
+  function removeBuilderPhase(idx) {
+    builderPhaseList.splice(idx, 1);
+    renderBuilderPhases();
+  }
+
+  function renderBuilderPhases() {
+    els.builderPhases.innerHTML = "";
+    for (var i = 0; i < builderPhaseList.length; i++) {
+      var p = builderPhaseList[i];
+      var row = document.createElement("div");
+      row.className = "builder-phase";
+      row.innerHTML =
+        '<span class="builder-phase-type type-' + p.type + '">' + p.type + '</span>' +
+        '<input type="text" class="builder-phase-name" value="' + escHtml(p.name) + '" data-idx="' + i + '">' +
+        '<input type="number" class="builder-phase-dur" value="' + p.duration + '" min="5" max="300" data-idx="' + i + '">s' +
+        '<button class="builder-phase-remove" data-idx="' + i + '">&times;</button>';
+      els.builderPhases.appendChild(row);
+    }
+    // Wire inline events
+    els.builderPhases.querySelectorAll(".builder-phase-name").forEach(function (el) {
+      el.addEventListener("change", function () {
+        builderPhaseList[+this.dataset.idx].name = this.value;
+      });
+    });
+    els.builderPhases.querySelectorAll(".builder-phase-dur").forEach(function (el) {
+      el.addEventListener("change", function () {
+        builderPhaseList[+this.dataset.idx].duration = Math.max(5, Math.min(300, +this.value || 30));
+      });
+    });
+    els.builderPhases.querySelectorAll(".builder-phase-remove").forEach(function (el) {
+      el.addEventListener("click", function () {
+        removeBuilderPhase(+this.dataset.idx);
+      });
+    });
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  }
+
+  function saveCustomWorkout() {
+    var title = els.builderName.value.trim();
+    if (!title) { els.builderName.focus(); return; }
+    if (builderPhaseList.length === 0) return;
+
+    // Sync any unsaved inline edits
+    els.builderPhases.querySelectorAll(".builder-phase-name").forEach(function (el) {
+      builderPhaseList[+el.dataset.idx].name = el.value;
+    });
+    els.builderPhases.querySelectorAll(".builder-phase-dur").forEach(function (el) {
+      builderPhaseList[+el.dataset.idx].duration = Math.max(5, Math.min(300, +el.value || 30));
+    });
+
+    var id = editingWorkoutId || "custom-" + Date.now();
+    customWorkouts[id] = {
+      id: id,
+      title: title,
+      category: "custom",
+      subtitle: "Custom workout",
+      description: "",
+      custom: true,
+      phases: builderPhaseList.map(function (p) {
+        return { name: p.name, type: p.type, duration: p.duration, hint: p.hint || "" };
+      }),
+    };
+    saveCustomWorkouts();
+    hideBuilder();
+  }
+
   /** Rebuild phases from the original workout using sessionMultiplier. */
   function applySessionMultiplier() {
     if (!currentWorkoutId) return;
-    var w = WORKOUTS[currentWorkoutId];
+    var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
-    phases = w.phases.map(function (p) {
-      return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
+    var rm = sessionRestMultiplier;
+    phases = filterHidden(currentWorkoutId, w.phases).map(function (p) {
+      var mult = p.type === "rest" ? rm : m;
+      return { name: p.name, type: p.type, duration: Math.round(p.duration * mult), hint: p.hint };
     });
     totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
     timeLeft = phases[0].duration;
 
     // Update ready screen display
     els.timerDisplay.textContent = fmt(phases[0].duration);
-    els.counterLabel.textContent = summarise(w.phases, m);
+    els.counterLabel.textContent = summarise(w.phases, m, sessionRestMultiplier);
     els.sessionMultLabel.innerHTML = fmtMultiplier(m);
   }
 
   function selectWorkout(id, push) {
     currentWorkoutId = id;
     sessionMultiplier = settings.multiplier;
-    const w = WORKOUTS[id];
+    sessionRestMultiplier = settings.restMultiplier;
+    const w = allWorkouts()[id];
     var m = sessionMultiplier;
-    phases = w.phases.map(function (p) {
-      return { name: p.name, type: p.type, duration: Math.round(p.duration * m), hint: p.hint };
+    var rm = sessionRestMultiplier;
+    var filtered = filterHidden(id, w.phases);
+    phases = filtered.map(function (p) {
+      var mult = p.type === "rest" ? rm : m;
+      return { name: p.name, type: p.type, duration: Math.round(p.duration * mult), hint: p.hint };
     });
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
     els.pickerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
+    els.builderScreen.classList.remove("active");
     els.timerScreen.classList.add("active");
 
     // set up initial state
@@ -551,12 +941,15 @@
     els.timerRing.setAttribute("stroke-dashoffset", RING_CIRCUMFERENCE);
     els.timerDisplay.textContent = fmt(phases[0].duration);
     els.sectionLabel.textContent = "Ready";
-    els.counterLabel.textContent = summarise(w.phases, m);
+    els.counterLabel.textContent = summarise(w.phases, m, sessionRestMultiplier);
     els.exerciseName.textContent = w.title;
     els.exerciseHint.textContent = w.subtitle;
     els.upnextContainer.style.display = "none";
     els.sessionMultiplier.classList.add("visible");
     els.sessionMultLabel.innerHTML = fmtMultiplier(m);
+    els.phaseListContainer.classList.add("visible");
+    els.btnShare.style.display = "inline-block";
+    renderPhaseList();
     showButtons("idle");
   }
 
@@ -564,6 +957,7 @@
   function showHistory(push) {
     els.pickerScreen.classList.remove("active");
     els.timerScreen.classList.remove("active");
+    els.builderScreen.classList.remove("active");
     els.historyScreen.classList.add("active");
     if (push !== false) history.pushState({ screen: "history" }, "");
     renderHistory();
@@ -571,6 +965,69 @@
 
   function hideHistory() {
     history.back();
+  }
+
+  function renderHeatmap() {
+    var entries = WorkoutHistory.getAll();
+    // Count workouts per day
+    var counts = {};
+    for (var i = 0; i < entries.length; i++) {
+      var d = new Date(entries[i].completedAt);
+      var key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      counts[key] = (counts[key] || 0) + 1;
+    }
+
+    // Build 13 weeks (91 days) grid ending today
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Find the Monday 12 weeks ago (13 weeks total)
+    var startDay = new Date(today);
+    var todayDow = (today.getDay() + 6) % 7; // Mon=0
+    startDay.setDate(today.getDate() - todayDow - 12 * 7);
+
+    var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    // Month labels row
+    var monthHtml = "";
+    var cursor = new Date(startDay);
+    var lastMonth = -1;
+    for (var w = 0; w < 13; w++) {
+      var m = cursor.getMonth();
+      if (m !== lastMonth) {
+        monthHtml += '<span class="heatmap-month">' + MONTHS[m] + '</span>';
+        lastMonth = m;
+      } else {
+        monthHtml += '<span class="heatmap-month"></span>';
+      }
+      cursor.setDate(cursor.getDate() + 7);
+    }
+
+    // Build grid: 7 rows x 13 cols (Mon-Sun x 13 weeks)
+    var cells = [];
+    for (var row = 0; row < 7; row++) {
+      for (var col = 0; col < 13; col++) {
+        var cellDate = new Date(startDay);
+        cellDate.setDate(startDay.getDate() + col * 7 + row);
+        var key2 = cellDate.getFullYear() + "-" + String(cellDate.getMonth() + 1).padStart(2, "0") + "-" + String(cellDate.getDate()).padStart(2, "0");
+        var count = counts[key2] || 0;
+        var isFuture = cellDate > today;
+        var level = isFuture ? "future" : count === 0 ? "" : count === 1 ? "level-1" : count === 2 ? "level-2" : count === 3 ? "level-3" : "level-4";
+        cells.push('<div class="heatmap-cell ' + level + '"></div>');
+      }
+    }
+
+    els.historyHeatmap.innerHTML =
+      '<div class="heatmap-months">' + monthHtml + '</div>' +
+      '<div class="heatmap-grid">' + cells.join("") + '</div>' +
+      '<div class="heatmap-legend">' +
+        '<span>Less</span>' +
+        '<div class="heatmap-legend-cell heatmap-cell"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-1"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-2"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-3"></div>' +
+        '<div class="heatmap-legend-cell heatmap-cell level-4"></div>' +
+        '<span>More</span>' +
+      '</div>';
   }
 
   function renderHistory() {
@@ -583,6 +1040,9 @@
       statCard(total, "Total") +
       statCard(streakDays, "Streak") +
       statCard(weekCount, "This Week");
+
+    // Heatmap
+    renderHeatmap();
 
     // List
     const entries = WorkoutHistory.getAll();
@@ -650,6 +1110,29 @@
     return d.toLocaleTimeString(undefined, {
       hour: "numeric", minute: "2-digit",
     });
+  }
+
+  function renderGoalRing() {
+    var goal = settings.weeklyGoal;
+    if (!goal || goal <= 0) {
+      els.goalRingContainer.classList.remove("visible");
+      return;
+    }
+    var count = WorkoutHistory.thisWeekCount();
+    var pct = Math.min(count / goal, 1);
+    var r = 36;
+    var circ = 2 * Math.PI * r;
+    var offset = circ * (1 - pct);
+    var done = count >= goal;
+    els.goalRingContainer.classList.add("visible");
+    els.goalRingContainer.innerHTML =
+      '<svg class="goal-ring-svg" width="84" height="84" viewBox="0 0 84 84">' +
+        '<circle class="goal-ring-bg" cx="42" cy="42" r="' + r + '"/>' +
+        '<circle class="goal-ring-fill' + (done ? " complete" : "") + '" cx="42" cy="42" r="' + r + '"' +
+          ' stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '"/>' +
+        '<text x="42" y="46" text-anchor="middle" fill="' + (done ? "#A8D08D" : "rgba(255,255,255,0.6)") + '" font-size="18" font-weight="700" font-family="var(--mono)" style="transform:rotate(90deg);transform-origin:42px 42px">' + count + '/' + goal + '</text>' +
+      '</svg>' +
+      '<div class="goal-ring-text">' + (done ? '<strong>Goal hit!</strong> Keep going.' : count + ' of ' + goal + ' this week') + '</div>';
   }
 
   function updateStreakBanner() {
@@ -766,7 +1249,11 @@
     renderSettingsAccount();
     els.multiplierSlider.value = settings.multiplier;
     els.multiplierLabel.innerHTML = fmtMultiplier(settings.multiplier);
+    els.restMultSlider.value = settings.restMultiplier;
+    els.restMultLabel.innerHTML = fmtMultiplier(settings.restMultiplier);
     els.ttsToggle.checked = settings.tts;
+    els.ambientToggle.checked = settings.ambient;
+    els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
     els.settingsBackdrop.classList.add("open");
     els.settingsPanel.classList.add("open");
   }
@@ -781,6 +1268,83 @@
     // Show one decimal for non-integers, no trailing zero for .5 etc.
     var s = Number(v) % 1 === 0 ? String(v) : v.toFixed(2).replace(/0$/, "");
     return s + "\u00D7";
+  }
+
+  // ── Share workout (URL hash) ────────────────────────────────
+  function encodeWorkout(w) {
+    var compact = {
+      t: w.title,
+      p: w.phases.map(function (ph) {
+        return [ph.name, ph.type, ph.duration, ph.hint || ""];
+      }),
+    };
+    return btoa(unescape(encodeURIComponent(JSON.stringify(compact))));
+  }
+
+  function decodeWorkout(hash) {
+    try {
+      var json = decodeURIComponent(escape(atob(hash)));
+      var compact = JSON.parse(json);
+      if (!compact.t || !compact.p || !compact.p.length) return null;
+      return {
+        title: compact.t,
+        phases: compact.p.map(function (a) {
+          return { name: a[0], type: a[1], duration: a[2], hint: a[3] || "" };
+        }),
+      };
+    } catch (_) { return null; }
+  }
+
+  function shareCurrentWorkout() {
+    if (!currentWorkoutId) return;
+    var w = allWorkouts()[currentWorkoutId];
+    if (!w) return;
+    var hash = encodeWorkout(w);
+    var url = location.origin + location.pathname + "#w=" + hash;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function () {
+        showShareToast("Link copied!");
+      }).catch(function () {
+        showShareToast(url);
+      });
+    } else {
+      prompt("Share this URL:", url);
+    }
+  }
+
+  function showShareToast(msg) {
+    var toast = document.createElement("div");
+    toast.className = "share-toast";
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function () { toast.classList.add("visible"); }, 10);
+    setTimeout(function () {
+      toast.classList.remove("visible");
+      setTimeout(function () { toast.remove(); }, 300);
+    }, 2000);
+  }
+
+  function checkImportHash() {
+    var hash = location.hash;
+    if (!hash || !hash.startsWith("#w=")) return false;
+    var data = decodeWorkout(hash.slice(3));
+    if (!data) return false;
+
+    // Import as a custom workout
+    var id = "import-" + Date.now();
+    customWorkouts[id] = {
+      id: id,
+      title: data.title,
+      category: "custom",
+      subtitle: "Imported workout",
+      description: "",
+      custom: true,
+      phases: data.phases,
+    };
+    saveCustomWorkouts();
+    // Clear the hash
+    history.replaceState(null, "", location.pathname);
+    return id;
   }
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -813,10 +1377,12 @@
     const s = e.state;
     if (!s || s.screen === "picker") {
       showPicker(false);
-    } else if (s.screen === "workout" && WORKOUTS[s.id]) {
+    } else if (s.screen === "workout" && allWorkouts()[s.id]) {
       selectWorkout(s.id, false);
     } else if (s.screen === "history") {
       showHistory(false);
+    } else if (s.screen === "builder") {
+      showBuilder(false);
     } else {
       showPicker(false);
     }
@@ -831,9 +1397,17 @@
     // Seed the initial history entry so there's something to go "back" to
     history.replaceState({ screen: "picker" }, "");
 
+    loadCustomWorkouts();
+    loadSkipData();
+
+    // Check for shared workout import
+    var importedId = checkImportHash();
+
     // If only one workout, skip picker and go straight to it
-    var workoutKeys = Object.keys(WORKOUTS);
-    if (workoutKeys.length === 1) {
+    var workoutKeys = Object.keys(allWorkouts());
+    if (importedId) {
+      selectWorkout(importedId);
+    } else if (workoutKeys.length === 1) {
       selectWorkout(workoutKeys[0]);
     } else {
       showPicker(false);
@@ -852,6 +1426,19 @@
       WorkoutHistory.clear();
       renderHistory();
     });
+
+    // ── Swap sheet ───────────────────────────────────────────
+    els.swapBackdrop.addEventListener("click", closeSwap);
+
+    // ── Builder ───────────────────────────────────────────────
+    els.btnCreate.addEventListener("click", function () { showBuilder(true); });
+    els.btnBuilderBack.addEventListener("click", hideBuilder);
+    els.btnAddWork.addEventListener("click", function () { addBuilderPhase("work"); });
+    els.btnAddRest.addEventListener("click", function () { addBuilderPhase("rest"); });
+    els.btnAddStretch.addEventListener("click", function () { addBuilderPhase("stretch"); });
+    els.btnAddYoga.addEventListener("click", function () { addBuilderPhase("yoga"); });
+    els.btnSaveWorkout.addEventListener("click", saveCustomWorkout);
+    els.btnShare.addEventListener("click", shareCurrentWorkout);
 
     // ── Per-session multiplier (+/−) ──────────────────────────
     els.btnMultDown.addEventListener("click", function () {
@@ -879,8 +1466,33 @@
       buildPicker();   // update displayed times
     });
 
+    els.restMultSlider.addEventListener("input", function () {
+      var v = parseFloat(this.value);
+      settings.restMultiplier = v;
+      els.restMultLabel.innerHTML = fmtMultiplier(v);
+    });
+    els.restMultSlider.addEventListener("change", function () {
+      saveSettings();
+    });
+
     els.ttsToggle.addEventListener("change", function () {
       settings.tts = this.checked;
+      saveSettings();
+    });
+
+    els.ambientToggle.addEventListener("change", function () {
+      settings.ambient = this.checked;
+      saveSettings();
+    });
+
+    els.btnGoalDown.addEventListener("click", function () {
+      settings.weeklyGoal = Math.max(1, settings.weeklyGoal - 1);
+      els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
+      saveSettings();
+    });
+    els.btnGoalUp.addEventListener("click", function () {
+      settings.weeklyGoal = Math.min(14, settings.weeklyGoal + 1);
+      els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
       saveSettings();
     });
 

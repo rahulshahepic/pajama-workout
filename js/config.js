@@ -9,23 +9,37 @@
  *   "work"    — active exercise  (teal accent)
  *   "rest"    — rest period      (purple accent)
  *   "stretch" — stretch / cool-down (green accent)
+ *   "yoga"    — yoga pose / flow  (warm amber accent)
  *
  * Each phase: { name, type, duration (seconds), hint }
  */
 
 /** Bump this when any cached asset changes.  SW uses it for cache-busting. */
-const APP_VERSION = 25;
+const APP_VERSION = 27;
 
 /** Google OAuth — public identifier, not a secret.  Change if you fork. */
 const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
 const GOOGLE_SCOPES    = "https://www.googleapis.com/auth/drive.appdata openid email";
 const SYNC_FILE_NAME   = "pajama-workout-history.json";
 
+/**
+ * Workout categories — used for colour-coded picker cards.
+ * Each: { label, color } where color is used for the left-border accent.
+ */
+const CATEGORIES = {
+  strength: { label: "Strength",  color: "#4ECDC4" },
+  mobility: { label: "Mobility",  color: "#A8D08D" },
+  yoga:     { label: "Yoga",      color: "#E8A44A" },
+  quick:    { label: "Quick",     color: "#8B85FF" },
+  custom:   { label: "Custom",    color: "#FF8C69" },
+};
+
 const WORKOUTS = {
   /* ── Default 5 + 5 routine ──────────────────────────────────── */
   "pajama-classic": {
     id: "pajama-classic",
     title: "Pajama Workout",
+    category: "strength",
     subtitle: "5 min workout + 5 min stretch",
     description: "Full-body basics you can do in your pajamas, plus a deep stretch cool-down.",
     phases: [
@@ -59,6 +73,7 @@ const WORKOUTS = {
   "rotator-cuff": {
     id: "rotator-cuff",
     title: "Rotator Cuff Rescue",
+    category: "mobility",
     subtitle: "~10 min shoulder stretches for impingement relief",
     description: "Targeted stretches and gentle strengthening for cranky shoulders and impingement.",
     phases: [
@@ -104,6 +119,7 @@ const WORKOUTS = {
   "lower-back-hips": {
     id: "lower-back-hips",
     title: "Lower Back & Hips",
+    category: "mobility",
     subtitle: "~10 min to loosen up the whole posterior chain",
     description: "Gentle mobility work for tight hips, stiff lower back, and the whole posterior chain.",
     phases: [
@@ -144,6 +160,7 @@ const WORKOUTS = {
   "keyboard-warrior": {
     id: "keyboard-warrior",
     title: "Keyboard Warrior",
+    category: "quick",
     subtitle: "1 min neck, shoulders & arms — no excuses",
     description: "A quick desk reset for neck, shoulders, and wrists. Do it between meetings.",
     phases: [
@@ -156,10 +173,61 @@ const WORKOUTS = {
     ],
   },
 
+  /* ── Morning Flow — sun salutation yoga ────────────────────── */
+  "morning-flow": {
+    id: "morning-flow",
+    title: "Morning Flow",
+    category: "yoga",
+    subtitle: "~10 min sun salutation + standing poses",
+    description: "Wake up your body with a gentle vinyasa-inspired flow. No equipment needed.",
+    phases: [
+      { name: "Mountain Pose",          type: "yoga", duration: 20, hint: "Stand tall, feet together, arms at sides. Ground through all four corners of your feet. Lift your chest, soften your shoulders, and breathe." },
+      { name: "Forward Fold",           type: "yoga", duration: 25, hint: "Hinge at the hips, let your head hang heavy. Bend your knees as much as you need to. Grab opposite elbows and sway gently." },
+      { name: "Halfway Lift",           type: "yoga", duration: 15, hint: "Hands to shins, flatten your back parallel to the floor. Gaze forward, lengthen your spine. This is your reset between folds." },
+      { name: "Low Lunge — R",          type: "yoga", duration: 30, hint: "Step your right foot back into a low lunge, left knee over ankle. Sink your hips and reach your arms overhead. Breathe into the hip flexor." },
+      { name: "Downward Dog",           type: "yoga", duration: 30, hint: "Press back, hands shoulder-width, feet hip-width. Push your hips up and back. Pedal your heels. Let your head hang between your arms." },
+      { name: "Low Lunge — L",          type: "yoga", duration: 30, hint: "Step your left foot back, right foot forward. Sink your hips, arms overhead. Keep your front knee tracking over your ankle." },
+      { name: "Downward Dog",           type: "yoga", duration: 25, hint: "Press back again. Spread your fingers wide, press through the knuckles. Find length in your spine — it's okay if heels don't touch." },
+      { name: "Warrior I — R",          type: "yoga", duration: 30, hint: "Step your right foot forward, back foot angled 45\u00B0. Bend the front knee, arms overhead. Square your hips forward and lift your chest." },
+      { name: "Warrior II — R",         type: "yoga", duration: 30, hint: "Open your hips and arms to the side. Front knee stays bent, gaze over your front fingertips. Strong legs, relaxed shoulders." },
+      { name: "Downward Dog",           type: "yoga", duration: 20, hint: "Flow back through plank and lower to down dog. Take three slow breaths here." },
+      { name: "Warrior I — L",          type: "yoga", duration: 30, hint: "Step left foot forward. Back foot angled, hips squared, arms reaching up. Ground through your back foot." },
+      { name: "Warrior II — L",         type: "yoga", duration: 30, hint: "Open to the side. Front knee bent, arms wide. Settle into the pose — find ease in the effort." },
+      { name: "Downward Dog",           type: "yoga", duration: 20, hint: "Last down dog. Breathe deeply, let your neck release completely." },
+      { name: "Forward Fold",           type: "yoga", duration: 20, hint: "Walk your feet to your hands. Fold over your legs. Shake your head yes and no to release the neck." },
+      { name: "Mountain Pose",          type: "yoga", duration: 20, hint: "Roll up slowly, one vertebra at a time. Stand tall. Close your eyes. Notice how your body feels. You showed up." },
+    ],
+  },
+
+  /* ── Wind-Down Yoga — evening relaxation ────────────────────── */
+  "wind-down-yoga": {
+    id: "wind-down-yoga",
+    title: "Wind-Down Yoga",
+    category: "yoga",
+    subtitle: "~12 min gentle floor poses for sleep",
+    description: "Slow, restorative poses to calm your nervous system before bed. All on the floor.",
+    phases: [
+      { name: "Seated Breathing",       type: "yoga", duration: 30, hint: "Sit cross-legged, hands on knees. Close your eyes. Inhale for 4 counts, hold for 2, exhale for 6. Repeat. Let your day dissolve." },
+      { name: "Seated Side Bend — L",   type: "yoga", duration: 25, hint: "Left hand down, right arm overhead. Lean left, opening the right side body. Keep both sit bones grounded." },
+      { name: "Seated Side Bend — R",   type: "yoga", duration: 25, hint: "Switch sides. Right hand down, left arm over. Breathe into the stretch along your left ribs." },
+      { name: "Cat-Cow",                type: "yoga", duration: 30, hint: "Come to all fours. Inhale, drop your belly and lift your gaze (cow). Exhale, round your spine and tuck your chin (cat). Move with your breath." },
+      { name: "Thread the Needle — L",  type: "yoga", duration: 30, hint: "From all fours, slide your left arm under your right. Rest your left shoulder and temple on the floor. Breathe into the twist." },
+      { name: "Thread the Needle — R",  type: "yoga", duration: 30, hint: "Switch sides. Slide right arm under left. Let your chest rotate open. Don't force it — gravity is your friend." },
+      { name: "Child's Pose",           type: "yoga", duration: 40, hint: "Knees wide, big toes together. Walk your hands forward, forehead down. This is your home base. Breathe slowly and deeply." },
+      { name: "Supine Twist — L",       type: "yoga", duration: 35, hint: "Lie on your back, hug knees in, then drop them to the left. Arms wide, look right. Let your lower back unwind." },
+      { name: "Supine Twist — R",       type: "yoga", duration: 35, hint: "Bring knees back to center, then drop to the right. Look left. Breathe and release." },
+      { name: "Happy Baby",             type: "yoga", duration: 30, hint: "Grab the outside edges of your feet, knees wide toward armpits. Rock gently side to side. Release your lower back." },
+      { name: "Reclined Butterfly",     type: "yoga", duration: 40, hint: "Soles of feet together, knees falling open. Arms at your sides, palms up. Close your eyes. This opens hips and calms the mind." },
+      { name: "Legs Up the Wall",       type: "yoga", duration: 45, hint: "Scoot your hips to a wall, swing your legs up. Arms relaxed at sides. This reverses blood flow and deeply relaxes. Stay here and breathe." },
+      { name: "Savasana",               type: "yoga", duration: 60, hint: "Lie flat, arms at sides, palms up. Close your eyes. Let every muscle release completely. You showed up. Now rest." },
+    ],
+  },
+
   /* ── Quick 5 min — no stretches ─────────────────────────────── */
   "quick-five": {
     id: "quick-five",
     title: "Quick Five",
+    category: "strength",
     subtitle: "5 minutes, no excuses",
     description: "Five exercises, no stretches, no rest longer than 20 seconds. Just get it done.",
     phases: [
@@ -193,6 +261,7 @@ const THEME = {
   work:      { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
   rest:      { bg: "#1a1a2e", accent: "#6C63FF", glow: "rgba(108,99,255,0.2)",   progress: "#8B85FF" },
   stretch:   { bg: "#1a2118", accent: "#A8D08D", glow: "rgba(168,208,141,0.15)", progress: "#A8D08D" },
+  yoga:      { bg: "#2a1a0e", accent: "#E8A44A", glow: "rgba(232,164,74,0.2)",   progress: "#E8A44A" },
   countdown: { bg: "#1a2332", accent: "rgba(255,255,255,0.6)", glow: "rgba(255,255,255,0.08)", progress: "rgba(255,255,255,0.2)" },
   idle:      { bg: "#1a2332", accent: "#4ECDC4", glow: "rgba(78,205,196,0.25)",  progress: "#4ECDC4" },
 };
@@ -215,7 +284,31 @@ const SOUNDS = {
   tick:       [550,  80, 1],   // last 3 seconds warning
 };
 
+/**
+ * Exercise substitutions — keyed by exercise name.
+ * Each value is an array of { name, hint } alternatives.
+ * Only "work" and "yoga" types show a swap option on the Ready screen.
+ */
+const SUBSTITUTIONS = {
+  "Squats":             [{ name: "Wall Sit",           hint: "Lean against a wall, slide down until thighs are parallel. Hold the position. Great if lunges hurt your knees." },
+                         { name: "Glute Bridges",      hint: "Lie on your back, feet flat, push hips up and squeeze glutes at the top. Lower and repeat." }],
+  "Push-ups":           [{ name: "Incline Push-ups",   hint: "Hands on a counter or sturdy chair. Same movement, less load. Keep your body straight." },
+                         { name: "Knee Push-ups",      hint: "Drop to your knees, cross your ankles. Same upper body movement, easier on the shoulders." }],
+  "Dead Bugs":          [{ name: "Bird Dogs",          hint: "On all fours, extend opposite arm and leg, hold briefly, switch. Trains the same core stability." },
+                         { name: "Hollow Hold",        hint: "Lie on your back, arms overhead, legs straight and slightly off the floor. Hold and breathe." }],
+  "Reverse Lunges":     [{ name: "Step-ups",           hint: "Step up onto a sturdy chair or stair, alternate legs. Easier on the knees than lunges." },
+                         { name: "Bodyweight Squats",  hint: "Feet shoulder-width, sit back and down. A simpler movement if lunges are tricky." }],
+  "Plank":              [{ name: "Knee Plank",         hint: "Same as a plank but knees on the floor. Keep your core tight and body straight from head to knees." },
+                         { name: "Dead Bug Hold",      hint: "Lie on your back, arms up, knees at 90\u00B0. Hold this position while pressing your lower back flat." }],
+  "Jumping Jacks":      [{ name: "March in Place",     hint: "High knees, pump your arms. Same cardio effect, no jumping. Easier on the joints." },
+                         { name: "Step Jacks",         hint: "Same arm motion as jumping jacks but step one foot out at a time instead of jumping." }],
+  "Mountain Climbers":  [{ name: "Standing Knee Drives", hint: "Stand tall, drive one knee up toward your chest, alternate. Same cardio, no plank position needed." },
+                         { name: "Slow Climbers",      hint: "Same as mountain climbers but at half speed. Focus on control, not pace." }],
+  "Bodyweight Squats":  [{ name: "Chair Squats",       hint: "Squat down to touch a chair seat, then stand back up. The chair gives you a depth target and safety net." },
+                         { name: "Wall Sit",           hint: "Back against the wall, slide to a 90\u00B0 seat. Hold. Burns in a different way." }],
+};
+
 // Allow Node.js test imports while keeping browser globals working
 if (typeof module !== "undefined") {
-  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
+  module.exports = { APP_VERSION, WORKOUTS, CATEGORIES, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, SUBSTITUTIONS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
 }

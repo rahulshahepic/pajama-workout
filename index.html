@@ -40,10 +40,12 @@
     </div>
     <div id="picker-subtitle">Pick a routine</div>
     <div id="sync-status-line" class="sync-status-line"></div>
+    <div id="goal-ring-container"></div>
     <div id="streak-banner"></div>
     <div id="workout-list"></div>
     <div id="picker-actions">
       <button class="btn btn-secondary btn-history" id="btn-history">HISTORY</button>
+      <button class="btn btn-secondary btn-create" id="btn-create">+ CREATE</button>
     </div>
   </div>
 
@@ -72,11 +74,43 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-section-label">VOICE CUES</div>
+      <div class="settings-section-label">REST DURATION</div>
+      <div class="settings-multiplier">
+        <span id="rest-multiplier-label">1&times;</span>
+        <input type="range" id="rest-multiplier-slider" min="0.5" max="3" step="0.25" value="1">
+        <div class="multiplier-ticks">
+          <span style="left:0%">.5</span>
+          <span style="left:10%">.75</span>
+          <span style="left:20%">1</span>
+          <span style="left:30%">1.25</span>
+          <span style="left:40%">1.5</span>
+          <span style="left:60%">2</span>
+          <span style="left:80%">2.5</span>
+          <span style="left:100%">3</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">WEEKLY GOAL</div>
+      <div class="settings-goal">
+        <button class="mult-btn" id="btn-goal-down">&minus;</button>
+        <span id="goal-label">3&times;/wk</span>
+        <button class="mult-btn" id="btn-goal-up">+</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">AUDIO</div>
       <label class="settings-toggle">
         <input type="checkbox" id="tts-toggle">
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
         <span class="toggle-label">Announce exercises</span>
+      </label>
+      <label class="settings-toggle" style="margin-top:12px">
+        <input type="checkbox" id="ambient-toggle">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Ambient drone</span>
       </label>
     </div>
 
@@ -93,8 +127,26 @@
       <div id="history-title">History</div>
     </div>
     <div id="history-stats"></div>
+    <div id="history-heatmap"></div>
     <div id="history-list"></div>
     <button class="btn btn-secondary btn-clear-history" id="btn-clear-history" style="display:none">CLEAR HISTORY</button>
+  </div>
+
+  <!-- ═══ Builder screen ═══ -->
+  <div id="builder-screen">
+    <div id="builder-header">
+      <button class="btn btn-secondary btn-back" id="btn-builder-back">&larr; BACK</button>
+      <div id="builder-title">New Workout</div>
+    </div>
+    <input type="text" id="builder-name" class="builder-input" placeholder="Workout name" maxlength="40">
+    <div id="builder-phases"></div>
+    <div id="builder-add-row">
+      <button class="btn-builder-add" id="btn-add-work">+ Exercise</button>
+      <button class="btn-builder-add" id="btn-add-rest">+ Rest</button>
+      <button class="btn-builder-add" id="btn-add-stretch">+ Stretch</button>
+      <button class="btn-builder-add btn-add-yoga" id="btn-add-yoga">+ Yoga</button>
+    </div>
+    <button class="btn btn-primary" id="btn-save-workout" style="margin-top:20px;width:100%">SAVE WORKOUT</button>
   </div>
 
   <!-- ═══ Timer screen ═══ -->
@@ -118,6 +170,8 @@
     <div id="exercise-name">Pajama Workout</div>
     <div id="exercise-hint">5 min workout + 5 min stretch</div>
 
+    <button class="btn-share" id="btn-share" style="display:none">SHARE</button>
+
     <div id="session-multiplier">
       <button class="mult-btn" id="btn-mult-down">&minus;</button>
       <span id="session-mult-label">1&times;</span>
@@ -136,6 +190,20 @@
       <div id="upnext-label">Up next</div>
       <div id="upnext-list"></div>
     </div>
+
+    <div id="phase-list-container">
+      <div id="phase-list-label">EXERCISES</div>
+      <div id="phase-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Swap sheet (bottom sheet for exercise substitution) ═══ -->
+  <div id="swap-backdrop"></div>
+  <div id="swap-panel">
+    <div class="settings-handle"></div>
+    <div class="swap-title">Swap exercise</div>
+    <div id="swap-current"></div>
+    <div id="swap-options"></div>
   </div>
 
   <!-- Google Identity Services (token model — no client secret) -->
