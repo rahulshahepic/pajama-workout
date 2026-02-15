@@ -47,17 +47,6 @@ const SyncManager = (function () {
     return base64url(new Uint8Array(digest));
   }
 
-  // ── Token request helper ───────────────────────────────────────
-
-  /** Build URLSearchParams with client_id (and client_secret if set). */
-  function buildTokenParams(extra) {
-    var p = { client_id: GOOGLE_CLIENT_ID };
-    if (typeof GOOGLE_CLIENT_SECRET === "string" && GOOGLE_CLIENT_SECRET) {
-      p.client_secret = GOOGLE_CLIENT_SECRET;
-    }
-    return new URLSearchParams(Object.assign(p, extra));
-  }
-
   // ── Token storage ──────────────────────────────────────────────
 
   function storeTokens(t) {
@@ -76,28 +65,93 @@ const SyncManager = (function () {
     return !t || !t.expires_at || Date.now() >= t.expires_at - 60000;
   }
 
-  // ── Token refresh ──────────────────────────────────────────────
+  // ── Token refresh (silent re-auth via hidden iframe) ───────────
+
+  function silentReAuth() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+
+      var timeout = setTimeout(function () { cleanup(); resolve(null); }, 10000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        try { document.body.removeChild(iframe); } catch (_) {}
+      }
+
+      // The iframe will load our page with ?code=… — we intercept it
+      iframe.addEventListener("load", function () {
+        try {
+          var iframeUrl = new URL(iframe.contentWindow.location.href);
+          var code = iframeUrl.searchParams.get("code");
+          if (code) {
+            cleanup();
+            resolve(code);
+          } else {
+            cleanup();
+            resolve(null);
+          }
+        } catch (_) {
+          // cross-origin or other error
+          cleanup();
+          resolve(null);
+        }
+      });
+
+      var challenge;
+      var verifier = generateVerifier();
+      computeChallenge(verifier).then(function (ch) {
+        challenge = ch;
+        localStorage.setItem(VERIFIER_KEY, verifier);
+        localStorage.setItem(REDIRECT_KEY, getRedirectUri());
+
+        var params = new URLSearchParams({
+          client_id:             GOOGLE_CLIENT_ID,
+          redirect_uri:          getRedirectUri(),
+          response_type:         "code",
+          scope:                 GOOGLE_SCOPES,
+          code_challenge:        challenge,
+          code_challenge_method: "S256",
+          prompt:                "none",
+        });
+
+        document.body.appendChild(iframe);
+        iframe.src = AUTH_URL + "?" + params.toString();
+      });
+    });
+  }
 
   async function refreshAccessToken() {
-    const t = loadTokens();
-    if (!t || !t.refresh_token) { clearTokens(); return null; }
+    // Try silent re-auth — Google will skip consent if user already authorized
+    var code = await silentReAuth();
+    if (!code) { clearTokens(); return null; }
 
-    const res = await fetch(TOKEN_URL, {
+    var verifier    = localStorage.getItem(VERIFIER_KEY);
+    var redirectUri = localStorage.getItem(REDIRECT_KEY);
+    localStorage.removeItem(VERIFIER_KEY);
+    localStorage.removeItem(REDIRECT_KEY);
+    if (!verifier) { clearTokens(); return null; }
+
+    var res = await fetch(TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: buildTokenParams({
-        grant_type:    "refresh_token",
-        refresh_token: t.refresh_token,
+      body: new URLSearchParams({
+        client_id:     GOOGLE_CLIENT_ID,
+        code:          code,
+        code_verifier: verifier,
+        grant_type:    "authorization_code",
+        redirect_uri:  redirectUri || getRedirectUri(),
       }),
     });
 
     if (!res.ok) { clearTokens(); return null; }
 
-    const data = await res.json();
-    t.access_token = data.access_token;
-    t.expires_at   = Date.now() + data.expires_in * 1000;
-    storeTokens(t);
-    return t.access_token;
+    var data = await res.json();
+    var tokens = loadTokens() || {};
+    tokens.access_token = data.access_token;
+    tokens.expires_at   = Date.now() + data.expires_in * 1000;
+    storeTokens(tokens);
+    return tokens.access_token;
   }
 
   async function getAccessToken() {
@@ -128,8 +182,6 @@ const SyncManager = (function () {
       scope:                 GOOGLE_SCOPES,
       code_challenge:        challenge,
       code_challenge_method: "S256",
-      access_type:           "offline",
-      prompt:                "consent",
     });
 
     window.location.href = AUTH_URL + "?" + params.toString();
@@ -165,7 +217,8 @@ const SyncManager = (function () {
       const res = await fetch(TOKEN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: buildTokenParams({
+        body: new URLSearchParams({
+          client_id:     GOOGLE_CLIENT_ID,
           code:          code,
           code_verifier: verifier,
           grant_type:    "authorization_code",

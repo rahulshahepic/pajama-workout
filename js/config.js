@@ -14,12 +14,11 @@
  */
 
 /** Bump this when any cached asset changes.  SW uses it for cache-busting. */
-const APP_VERSION = 21;
+const APP_VERSION = 22;
 
-/** Google OAuth — change both if you fork. */
-const GOOGLE_CLIENT_ID     = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
-const GOOGLE_CLIENT_SECRET = "";   // ← paste your client secret here
-const GOOGLE_SCOPES        = "https://www.googleapis.com/auth/drive.appdata openid email";
+/** Google OAuth — public identifier, not a secret.  Change if you fork. */
+const GOOGLE_CLIENT_ID = "778429434640-gqtggq705n8p70ged1m1k9bkuss0ghcg.apps.googleusercontent.com";
+const GOOGLE_SCOPES    = "https://www.googleapis.com/auth/drive.appdata openid email";
 const SYNC_FILE_NAME   = "pajama-workout-history.json";
 
 const WORKOUTS = {
@@ -213,5 +212,5 @@ const SOUNDS = {
 
 // Allow Node.js test imports while keeping browser globals working
 if (typeof module !== "undefined") {
-  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_SCOPES, SYNC_FILE_NAME };
+  module.exports = { APP_VERSION, WORKOUTS, COUNTDOWN_SECS, DEFAULT_WORKOUT, THEME, DONE_THEME, SOUNDS, GOOGLE_CLIENT_ID, GOOGLE_SCOPES, SYNC_FILE_NAME };
 }
