@@ -160,8 +160,10 @@ const SyncManager = (function () {
       });
 
       if (!res.ok) {
+        var errBody = {};
+        try { errBody = await res.json(); } catch (_) {}
         cleanUrl();
-        return { wasRedirect: true, ok: false, error: "token_exchange_" + res.status };
+        return { wasRedirect: true, ok: false, error: (errBody.error || "token_exchange") + "_" + res.status };
       }
 
       const data = await res.json();
