@@ -301,15 +301,17 @@ body {
   z-index: 1;
   width: 100%;
   max-width: 340px;
+  position: relative;
 }
 #picker-screen.active { display: flex; }
 
 #workout-list {
   width: 100%;
-  max-height: 55vh;
+  max-height: 65vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-right: 4px;
+  padding-bottom: 72px; /* room for FAB */
 }
 #workout-list::-webkit-scrollbar { width: 3px; }
 #workout-list::-webkit-scrollbar-track { background: transparent; }
@@ -319,26 +321,28 @@ body {
 }
 
 #picker-title {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   color: rgba(255,255,255,0.85);
-  margin-bottom: 6px;
-  text-align: center;
 }
-#picker-subtitle {
-  font-size: 13px;
+
+/* ── Picker status line (goal + streak, subtle) ──────────── */
+#picker-status {
+  font-size: 12px;
   color: rgba(255,255,255,0.3);
-  margin-bottom: 32px;
-  letter-spacing: 1px;
+  margin-bottom: 20px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  min-height: 18px;
 }
 
 .workout-card {
   width: 100%;
-  padding: 16px 20px;
-  margin-bottom: 10px;
-  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  border-radius: 10px;
   background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.06);
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
   -webkit-tap-highlight-color: transparent;
@@ -348,33 +352,18 @@ body {
 }
 .workout-card:hover {
   background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.12);
 }
 .workout-card-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: rgba(255,255,255,0.8);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .workout-card-meta {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255,255,255,0.3);
-  letter-spacing: 0.5px;
-}
-.workout-card-cat {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-left: 8px;
-  opacity: 0.7;
-  vertical-align: middle;
-}
-.workout-card-desc {
-  font-size: 12px;
-  color: rgba(255,255,255,0.2);
-  margin-top: 6px;
-  line-height: 1.4;
+  letter-spacing: 0.3px;
 }
 
 /* ── Timer screen (hidden by default until a workout starts) ── */
@@ -399,40 +388,6 @@ body {
   color: rgba(255,255,255,0.3);
 }
 
-/* ── Weekly goal ring (picker screen) ─────────────────────── */
-#goal-ring-container {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 16px;
-  z-index: 1;
-}
-#goal-ring-container.visible { display: flex; }
-.goal-ring-svg { transform: rotate(-90deg); }
-.goal-ring-bg {
-  fill: none;
-  stroke: rgba(255,255,255,0.06);
-  stroke-width: 6;
-}
-.goal-ring-fill {
-  fill: none;
-  stroke: #4ECDC4;
-  stroke-width: 6;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 0.6s ease;
-}
-.goal-ring-fill.complete { stroke: #A8D08D; }
-.goal-ring-text {
-  font-size: 12px;
-  color: rgba(255,255,255,0.4);
-  margin-top: 6px;
-  text-align: center;
-}
-.goal-ring-text strong {
-  color: rgba(255,255,255,0.7);
-  font-weight: 600;
-}
-
 /* ── Settings goal ────────────────────────────────────────── */
 .settings-goal {
   display: flex;
@@ -449,35 +404,20 @@ body {
   text-align: center;
 }
 
-/* ── Streak banner (picker screen) ─────────────────────────── */
-#streak-banner {
-  display: none;
-  width: 100%;
-  text-align: center;
-  padding: 10px 16px;
-  margin-bottom: 20px;
-  border-radius: 10px;
-  background: rgba(168,208,141,0.08);
-  border: 1px solid rgba(168,208,141,0.15);
-  font-size: 13px;
-  color: rgba(168,208,141,0.8);
-  letter-spacing: 0.5px;
-}
-#streak-banner.visible { display: block; }
-
-/* ── Picker header (title + gear) ─────────────────────────── */
+/* ── Picker header (title + icons) ────────────────────────── */
 #picker-header {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
+#picker-header-actions {
+  display: flex;
+  gap: 4px;
+}
+#picker-header-actions button,
 #btn-settings {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
   background: none;
   border: none;
   color: rgba(255,255,255,0.3);
@@ -486,32 +426,37 @@ body {
   border-radius: 50%;
   transition: color 0.2s ease, background 0.2s ease;
   -webkit-tap-highlight-color: transparent;
-}
-#btn-settings:hover { color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.06); }
-
-/* ── Sync status line (subtle, under subtitle) ────────────── */
-.sync-status-line {
-  display: none;
-  font-size: 11px;
-  color: rgba(255,255,255,0.2);
-  letter-spacing: 0.3px;
-  margin-bottom: 12px;
-  text-align: center;
-}
-.sync-status-line.visible { display: block; }
-
-/* ── Picker action buttons ────────────────────────────────── */
-#picker-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 24px;
+  align-items: center;
+  justify-content: center;
 }
-.btn-history {
-  padding: 10px 32px;
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-align: center;
+#picker-header-actions button:hover { color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.06); }
+
+/* ── FAB (floating add button) ────────────────────────────── */
+#fab-create {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(78,205,196,0.15);
+  border: 1px solid rgba(78,205,196,0.3);
+  color: #4ECDC4;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
+#fab-create:hover { background: rgba(78,205,196,0.25); }
+#fab-create:active { transform: scale(0.92); }
 
 
 
@@ -801,13 +746,6 @@ body {
 }
 .btn-builder-add:hover { background: rgba(255,255,255,0.04); }
 .btn-add-yoga { color: rgba(232,164,74,0.5); border-color: rgba(232,164,74,0.15); }
-
-.btn-create {
-  padding: 10px 24px;
-  font-size: 12px;
-  letter-spacing: 2px;
-  text-align: center;
-}
 
 /* ── Phase list (Ready screen — tap to swap) ─────────────────── */
 #phase-list-container {
