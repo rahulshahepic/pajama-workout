@@ -217,6 +217,28 @@ const SyncManager = (function () {
     return res.json();
   }
 
+  // ── Custom workouts (localStorage bridge) ─────────────────────
+  var CUSTOM_KEY = "pajama-custom-workouts";
+
+  function loadLocalCustomWorkouts() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(CUSTOM_KEY));
+      return (raw && typeof raw === "object") ? raw : {};
+    } catch (_) { return {}; }
+  }
+
+  function saveLocalCustomWorkouts(workouts) {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(workouts)); } catch (_) {}
+  }
+
+  /** Merge custom workouts: remote wins for same id, keep all unique. */
+  function mergeCustomWorkouts(local, remote) {
+    var merged = {};
+    for (var k in local) merged[k] = local[k];
+    for (var r in remote) merged[r] = remote[r]; // remote overwrites on conflict
+    return merged;
+  }
+
   // ── Sync logic ─────────────────────────────────────────────────
 
   function mergeEntries(a, b) {
@@ -231,19 +253,30 @@ const SyncManager = (function () {
 
     try {
       var local = WorkoutHistory.exportData();
+      var localCustom = loadLocalCustomWorkouts();
 
       var remoteEntries = [];
+      var remoteCustom = {};
       var fileId = await findSyncFile();
       if (fileId) {
         var remote = await readSyncFile(fileId);
         remoteEntries = (remote && Array.isArray(remote.entries)) ? remote.entries : [];
+        remoteCustom = (remote && remote.customWorkouts && typeof remote.customWorkouts === "object") ? remote.customWorkouts : {};
       }
 
       var merged = mergeEntries(local.entries, remoteEntries);
-      WorkoutHistory.replaceEntries(merged);
-      await writeSyncFile(fileId, { version: local.version, entries: merged });
+      var mergedCustom = mergeCustomWorkouts(localCustom, remoteCustom);
 
-      return { ok: true };
+      WorkoutHistory.replaceEntries(merged);
+      saveLocalCustomWorkouts(mergedCustom);
+
+      await writeSyncFile(fileId, {
+        version: local.version,
+        entries: merged,
+        customWorkouts: mergedCustom,
+      });
+
+      return { ok: true, customWorkoutsChanged: Object.keys(mergedCustom).length !== Object.keys(localCustom).length };
     } catch (e) {
       return { ok: false, reason: e.message };
     }
