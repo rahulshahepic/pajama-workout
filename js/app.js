@@ -42,6 +42,7 @@
   }
 
   function saveSettings() {
+    settings._syncedAt = Date.now();
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (_) {}
   }
 
@@ -1289,6 +1290,8 @@
       lastSyncedAt = new Date();
       // Reload custom workouts in case remote had new ones
       loadCustomWorkouts();
+      // Reload settings in case remote had different values
+      if (result.settingsChanged) loadSettings();
       updatePickerStatus();
       if (els.pickerScreen.classList.contains("active")) buildPicker();
       if (els.historyScreen.classList.contains("active")) renderHistory();

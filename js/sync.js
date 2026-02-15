@@ -239,6 +239,32 @@ const SyncManager = (function () {
     return merged;
   }
 
+  // ── User settings (localStorage bridge) ──────────────────────
+  var SETTINGS_KEY = "pajama-settings";
+
+  function loadLocalSettings() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      return (raw && typeof raw === "object") ? raw : null;
+    } catch (_) { return null; }
+  }
+
+  function saveLocalSettings(s) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (_) {}
+  }
+
+  /**
+   * Merge settings: use whichever copy was saved more recently.
+   * Each side carries a `_syncedAt` timestamp added at sync time.
+   */
+  function mergeSettings(local, remote) {
+    if (!remote) return local;
+    if (!local)  return remote;
+    var lt = local._syncedAt  || 0;
+    var rt = remote._syncedAt || 0;
+    return rt >= lt ? remote : local;
+  }
+
   // ── Sync logic ─────────────────────────────────────────────────
 
   function mergeEntries(a, b) {
@@ -254,29 +280,45 @@ const SyncManager = (function () {
     try {
       var local = WorkoutHistory.exportData();
       var localCustom = loadLocalCustomWorkouts();
+      var localSettings = loadLocalSettings();
+      if (localSettings) localSettings._syncedAt = Date.now();
 
       var remoteEntries = [];
       var remoteCustom = {};
+      var remoteSettings = null;
       var fileId = await findSyncFile();
       if (fileId) {
         var remote = await readSyncFile(fileId);
         remoteEntries = (remote && Array.isArray(remote.entries)) ? remote.entries : [];
         remoteCustom = (remote && remote.customWorkouts && typeof remote.customWorkouts === "object") ? remote.customWorkouts : {};
+        remoteSettings = (remote && remote.settings && typeof remote.settings === "object") ? remote.settings : null;
       }
 
       var merged = mergeEntries(local.entries, remoteEntries);
       var mergedCustom = mergeCustomWorkouts(localCustom, remoteCustom);
+      var mergedSettings = mergeSettings(localSettings, remoteSettings);
 
       WorkoutHistory.replaceEntries(merged);
       saveLocalCustomWorkouts(mergedCustom);
+      var settingsChanged = false;
+      if (mergedSettings) {
+        var prev = JSON.stringify(localSettings);
+        saveLocalSettings(mergedSettings);
+        settingsChanged = JSON.stringify(mergedSettings) !== prev;
+      }
 
       await writeSyncFile(fileId, {
         version: local.version,
         entries: merged,
         customWorkouts: mergedCustom,
+        settings: mergedSettings,
       });
 
-      return { ok: true, customWorkoutsChanged: Object.keys(mergedCustom).length !== Object.keys(localCustom).length };
+      return {
+        ok: true,
+        customWorkoutsChanged: Object.keys(mergedCustom).length !== Object.keys(localCustom).length,
+        settingsChanged: settingsChanged,
+      };
     } catch (e) {
       return { ok: false, reason: e.message };
     }
