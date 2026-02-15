@@ -79,8 +79,8 @@
       historyStats:  $("history-stats"),
       historyHeatmap:$("history-heatmap"),
       historyList:   $("history-list"),
-      goalRingContainer: $("goal-ring-container"),
-      streakBanner:  $("streak-banner"),
+      pickerStatus:  $("picker-status"),
+      fabCreate:     $("fab-create"),
       wakeIndicator: $("wake-indicator"),
       btnSettings:       $("btn-settings"),
       settingsBackdrop:  $("settings-backdrop"),
@@ -95,14 +95,12 @@
       goalLabel:         $("goal-label"),
       btnGoalDown:       $("btn-goal-down"),
       btnGoalUp:         $("btn-goal-up"),
-      syncStatusLine:    $("sync-status-line"),
       sessionMultiplier: $("session-multiplier"),
       sessionMultLabel:  $("session-mult-label"),
       btnMultDown:       $("btn-mult-down"),
       btnMultUp:         $("btn-mult-up"),
       builderScreen:     $("builder-screen"),
       btnBuilderBack:    $("btn-builder-back"),
-      btnCreate:         $("btn-create"),
       builderName:       $("builder-name"),
       builderPhases:     $("builder-phases"),
       btnAddWork:        $("btn-add-work"),
@@ -565,6 +563,7 @@
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
     els.builderScreen.classList.remove("active");
+    els.fabCreate.style.display = "flex";
 
     applyTheme("idle");
     els.progressFill.style.width = "0%";
@@ -572,8 +571,7 @@
     if (push) history.pushState({ screen: "picker" }, "");
 
     buildPicker();
-    renderGoalRing();
-    updateStreakBanner();
+    updatePickerStatus();
   }
 
   function buildPicker() {
@@ -597,12 +595,9 @@
         card.style.borderLeftColor = cat.color;
       }
       var meta = summarise(w.phases, m, settings.restMultiplier);
-      var catLabel = cat ? `<span class="workout-card-cat" style="color:${cat.color}">${cat.label}</span>` : "";
-      var desc = w.description ? `<div class="workout-card-desc">${w.description}</div>` : "";
       card.innerHTML =
-        `<div class="workout-card-title">${w.title}${catLabel}</div>` +
-        `<div class="workout-card-meta">${meta}</div>` +
-        desc;
+        `<div class="workout-card-title">${w.title}</div>` +
+        `<div class="workout-card-meta">${meta}</div>`;
       card.addEventListener("click", () => selectWorkout(key));
       container.appendChild(card);
     }
@@ -793,6 +788,7 @@
     els.timerScreen.classList.remove("active");
     els.historyScreen.classList.remove("active");
     els.builderScreen.classList.add("active");
+    els.fabCreate.style.display = "none";
     if (push !== false) history.pushState({ screen: "builder" }, "");
 
     if (editId && customWorkouts[editId]) {
@@ -925,6 +921,7 @@
     els.historyScreen.classList.remove("active");
     els.builderScreen.classList.remove("active");
     els.timerScreen.classList.add("active");
+    els.fabCreate.style.display = "none";
 
     // set up initial state
     phaseIndex = 0;
@@ -959,6 +956,7 @@
     els.timerScreen.classList.remove("active");
     els.builderScreen.classList.remove("active");
     els.historyScreen.classList.add("active");
+    els.fabCreate.style.display = "none";
     if (push !== false) history.pushState({ screen: "history" }, "");
     renderHistory();
   }
@@ -1112,41 +1110,21 @@
     });
   }
 
-  function renderGoalRing() {
+  /** Single status line: combines goal + streak info into one subtle line. */
+  function updatePickerStatus() {
+    var parts = [];
     var goal = settings.weeklyGoal;
-    if (!goal || goal <= 0) {
-      els.goalRingContainer.classList.remove("visible");
-      return;
+    if (goal && goal > 0) {
+      var count = WorkoutHistory.thisWeekCount();
+      if (count >= goal) {
+        parts.push("Goal hit! " + count + "/" + goal + " this week");
+      } else {
+        parts.push(count + "/" + goal + " this week");
+      }
     }
-    var count = WorkoutHistory.thisWeekCount();
-    var pct = Math.min(count / goal, 1);
-    var r = 36;
-    var circ = 2 * Math.PI * r;
-    var offset = circ * (1 - pct);
-    var done = count >= goal;
-    els.goalRingContainer.classList.add("visible");
-    els.goalRingContainer.innerHTML =
-      '<svg class="goal-ring-svg" width="84" height="84" viewBox="0 0 84 84">' +
-        '<circle class="goal-ring-bg" cx="42" cy="42" r="' + r + '"/>' +
-        '<circle class="goal-ring-fill' + (done ? " complete" : "") + '" cx="42" cy="42" r="' + r + '"' +
-          ' stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '"/>' +
-        '<text x="42" y="46" text-anchor="middle" fill="' + (done ? "#A8D08D" : "rgba(255,255,255,0.6)") + '" font-size="18" font-weight="700" font-family="var(--mono)" style="transform:rotate(90deg);transform-origin:42px 42px">' + count + '/' + goal + '</text>' +
-      '</svg>' +
-      '<div class="goal-ring-text">' + (done ? '<strong>Goal hit!</strong> Keep going.' : count + ' of ' + goal + ' this week') + '</div>';
-  }
-
-  function updateStreakBanner() {
-    const s = WorkoutHistory.streak();
-    const total = WorkoutHistory.totalCount();
-    if (s >= 2) {
-      els.streakBanner.textContent = s + " day streak \u00B7 " + total + " workouts";
-      els.streakBanner.classList.add("visible");
-    } else if (total > 0) {
-      els.streakBanner.textContent = total + " workout" + (total === 1 ? "" : "s") + " completed";
-      els.streakBanner.classList.add("visible");
-    } else {
-      els.streakBanner.classList.remove("visible");
-    }
+    var s = WorkoutHistory.streak();
+    if (s >= 2) parts.push(s + " day streak");
+    els.pickerStatus.textContent = parts.join(" \u00B7 ");
   }
 
   // ── Sync / Account ─────────────────────────────────────────
@@ -1157,25 +1135,7 @@
   }
 
   function updateSyncStatusLine() {
-    if (!syncAvailable()) {
-      els.syncStatusLine.classList.remove("visible");
-      return;
-    }
-    if (SyncManager.isSignedIn()) {
-      var email = SyncManager.getEmail();
-      var text = "";
-      if (lastSyncedAt) {
-        text = "Synced " + timeAgo(lastSyncedAt);
-        if (email) text += " \u00B7 " + email;
-      } else {
-        text = email ? "Signed in \u00B7 " + email : "Signed in";
-      }
-      els.syncStatusLine.textContent = text;
-      els.syncStatusLine.classList.add("visible");
-    } else {
-      els.syncStatusLine.textContent = "Tap \u2699 to enable sync";
-      els.syncStatusLine.classList.add("visible");
-    }
+    // Sync status is now only shown in settings, not on the home page.
   }
 
   function timeAgo(date) {
@@ -1238,8 +1198,7 @@
     var result = await SyncManager.sync();
     if (result.ok) {
       lastSyncedAt = new Date();
-      updateSyncStatusLine();
-      updateStreakBanner();
+      updatePickerStatus();
       if (els.historyScreen.classList.contains("active")) renderHistory();
     }
   }
@@ -1431,7 +1390,7 @@
     els.swapBackdrop.addEventListener("click", closeSwap);
 
     // ── Builder ───────────────────────────────────────────────
-    els.btnCreate.addEventListener("click", function () { showBuilder(true); });
+    els.fabCreate.addEventListener("click", function () { showBuilder(true); });
     els.btnBuilderBack.addEventListener("click", hideBuilder);
     els.btnAddWork.addEventListener("click", function () { addBuilderPhase("work"); });
     els.btnAddRest.addEventListener("click", function () { addBuilderPhase("rest"); });
