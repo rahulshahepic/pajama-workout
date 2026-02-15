@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#1a2332"/>
+  <circle cx="96" cy="88" r="52" fill="none" stroke="#4ECDC4" stroke-width="5" opacity="0.3"/>
+  <circle cx="96" cy="88" r="52" fill="none" stroke="#4ECDC4" stroke-width="5"
+    stroke-dasharray="326.73" stroke-dashoffset="81.68"
+    stroke-linecap="round" transform="rotate(-90 96 88)"/>
+  <text x="96" y="100" text-anchor="middle" fill="#4ECDC4"
+    font-family="Courier New,monospace" font-size="32" font-weight="700">5:00</text>
+  <text x="96" y="164" text-anchor="middle" fill="rgba(255,255,255,0.5)"
+    font-family="-apple-system,system-ui,sans-serif" font-size="14" font-weight="600"
+    letter-spacing="3">PJ</text>
+</svg>

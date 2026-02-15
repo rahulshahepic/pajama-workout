@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#1a2332"/>
+  <circle cx="256" cy="230" r="140" fill="none" stroke="#4ECDC4" stroke-width="10" opacity="0.3"/>
+  <circle cx="256" cy="230" r="140" fill="none" stroke="#4ECDC4" stroke-width="10"
+    stroke-dasharray="879.65" stroke-dashoffset="219.91"
+    stroke-linecap="round" transform="rotate(-90 256 230)"/>
+  <text x="256" y="255" text-anchor="middle" fill="#4ECDC4"
+    font-family="Courier New,monospace" font-size="80" font-weight="700">5:00</text>
+  <text x="256" y="440" text-anchor="middle" fill="rgba(255,255,255,0.5)"
+    font-family="-apple-system,system-ui,sans-serif" font-size="36" font-weight="600"
+    letter-spacing="8">PAJAMA</text>
+</svg>
