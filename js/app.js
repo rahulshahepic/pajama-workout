@@ -613,13 +613,21 @@
     }
   }
 
-  function handleSyncButton() {
+  async function handleSyncButton() {
     if (!syncAvailable()) return;
     if (SyncManager.isSignedIn()) {
       SyncManager.signOut();
       updateSyncUI();
     } else {
-      SyncManager.signIn();
+      try {
+        els.syncStatus.textContent = "Redirecting\u2026";
+        els.syncStatus.style.display = "block";
+        await SyncManager.signIn();
+      } catch (e) {
+        els.syncStatus.textContent = "Sign-in failed";
+        els.syncStatus.style.display = "block";
+        setTimeout(updateSyncUI, 3000);
+      }
     }
   }
 
