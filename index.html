@@ -32,7 +32,20 @@
   <div id="picker-screen">
     <div id="picker-title">Pajama Workout</div>
     <div id="picker-subtitle">Pick a routine</div>
+    <div id="streak-banner"></div>
     <div id="workout-list"></div>
+    <button class="btn btn-secondary btn-history" id="btn-history">HISTORY</button>
+  </div>
+
+  <!-- ═══ History screen ═══ -->
+  <div id="history-screen">
+    <div id="history-header">
+      <button class="btn btn-secondary btn-back" id="btn-history-back">&larr; BACK</button>
+      <div id="history-title">History</div>
+    </div>
+    <div id="history-stats"></div>
+    <div id="history-list"></div>
+    <button class="btn btn-secondary btn-clear-history" id="btn-clear-history" style="display:none">CLEAR HISTORY</button>
   </div>
 
   <!-- ═══ Timer screen ═══ -->
@@ -69,8 +82,9 @@
     </div>
   </div>
 
-  <!-- Scripts: config first, then app -->
+  <!-- Scripts: config first, then history, then app -->
   <script src="js/config.js"></script>
+  <script src="js/history.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

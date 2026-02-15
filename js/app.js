@@ -47,6 +47,13 @@
       upnextList:    $("upnext-list"),
       pickerScreen:  $("picker-screen"),
       timerScreen:   $("timer-screen"),
+      historyScreen: $("history-screen"),
+      btnHistory:    $("btn-history"),
+      btnHistoryBack:$("btn-history-back"),
+      btnClearHistory:$("btn-clear-history"),
+      historyStats:  $("history-stats"),
+      historyList:   $("history-list"),
+      streakBanner:  $("streak-banner"),
       wakeIndicator: $("wake-indicator"),
     };
   }
@@ -207,6 +214,16 @@
     els.upnextContainer.style.display = "none";
     showButtons("done");
     releaseWakeLock();
+
+    // Record to history
+    const w = WORKOUTS[currentWorkoutId];
+    WorkoutHistory.record({
+      workoutId:       currentWorkoutId,
+      title:           w.title,
+      durationSecs:    totalTime,
+      phasesCompleted: phases.length,
+      phasesTotal:     phases.length,
+    });
   }
 
   // ── Timer core ──────────────────────────────────────────────
@@ -315,6 +332,7 @@
     els.progressFill.style.background = "#4ECDC4";
 
     buildPicker();
+    updateStreakBanner();
   }
 
   function buildPicker() {
@@ -339,6 +357,7 @@
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
     els.pickerScreen.classList.remove("active");
+    els.historyScreen.classList.remove("active");
     els.timerScreen.classList.add("active");
 
     // set up initial state
@@ -359,6 +378,109 @@
     els.exerciseHint.textContent = w.subtitle;
     els.upnextContainer.style.display = "none";
     showButtons("idle");
+  }
+
+  // ── History screen ─────────────────────────────────────────
+  function showHistory() {
+    els.pickerScreen.classList.remove("active");
+    els.timerScreen.classList.remove("active");
+    els.historyScreen.classList.add("active");
+    renderHistory();
+  }
+
+  function hideHistory() {
+    els.historyScreen.classList.remove("active");
+    showPicker();
+  }
+
+  function renderHistory() {
+    // Stats
+    const total = WorkoutHistory.totalCount();
+    const streakDays = WorkoutHistory.streak();
+    const weekCount = WorkoutHistory.thisWeekCount();
+
+    els.historyStats.innerHTML =
+      statCard(total, "Total") +
+      statCard(streakDays, "Streak") +
+      statCard(weekCount, "This Week");
+
+    // List
+    const entries = WorkoutHistory.getAll();
+    els.btnClearHistory.style.display = entries.length ? "inline-block" : "none";
+
+    if (entries.length === 0) {
+      els.historyList.innerHTML =
+        '<div class="history-empty">No workouts yet.<br>Go do one!</div>';
+      return;
+    }
+
+    // Group by date
+    const groups = {};
+    for (const e of entries) {
+      const d = new Date(e.completedAt);
+      const key = formatDate(d);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    }
+
+    let html = "";
+    for (const [date, items] of Object.entries(groups)) {
+      html += `<div class="history-date-group">`;
+      html += `<div class="history-date-label">${date}</div>`;
+      for (const item of items) {
+        const time = new Date(item.completedAt);
+        const mins = Math.round(item.durationSecs / 60);
+        html += `<div class="history-entry">`;
+        html += `<span class="history-entry-name">${item.title}</span>`;
+        html += `<span class="history-entry-meta">${mins} min &middot; ${formatTime(time)}</span>`;
+        html += `</div>`;
+      }
+      html += `</div>`;
+    }
+    els.historyList.innerHTML = html;
+  }
+
+  function statCard(value, label) {
+    return `<div class="stat-card"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>`;
+  }
+
+  function formatDate(d) {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (sameDay(d, today)) return "Today";
+    if (sameDay(d, yesterday)) return "Yesterday";
+
+    return d.toLocaleDateString(undefined, {
+      weekday: "short", month: "short", day: "numeric",
+    });
+  }
+
+  function sameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate();
+  }
+
+  function formatTime(d) {
+    return d.toLocaleTimeString(undefined, {
+      hour: "numeric", minute: "2-digit",
+    });
+  }
+
+  function updateStreakBanner() {
+    const s = WorkoutHistory.streak();
+    const total = WorkoutHistory.totalCount();
+    if (s >= 2) {
+      els.streakBanner.textContent = s + " day streak \u00B7 " + total + " workouts";
+      els.streakBanner.classList.add("visible");
+    } else if (total > 0) {
+      els.streakBanner.textContent = total + " workout" + (total === 1 ? "" : "s") + " completed";
+      els.streakBanner.classList.add("visible");
+    } else {
+      els.streakBanner.classList.remove("visible");
+    }
   }
 
   // ── Keyboard shortcuts ──────────────────────────────────────
@@ -387,6 +509,12 @@
     els.btnResume.addEventListener("click", resume);
     els.btnReset.addEventListener("click", reset);
     els.btnSkip.addEventListener("click", skip);
+    els.btnHistory.addEventListener("click", showHistory);
+    els.btnHistoryBack.addEventListener("click", hideHistory);
+    els.btnClearHistory.addEventListener("click", () => {
+      WorkoutHistory.clear();
+      renderHistory();
+    });
 
     // If only one workout, skip picker and go straight to it
     const workoutKeys = Object.keys(WORKOUTS);

@@ -283,6 +283,145 @@ body {
 }
 #timer-screen.active { display: flex; }
 
+/* ── Streak banner (picker screen) ─────────────────────────── */
+#streak-banner {
+  display: none;
+  width: 100%;
+  text-align: center;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  background: rgba(168,208,141,0.08);
+  border: 1px solid rgba(168,208,141,0.15);
+  font-size: 13px;
+  color: rgba(168,208,141,0.8);
+  letter-spacing: 0.5px;
+}
+#streak-banner.visible { display: block; }
+
+/* ── History button on picker ──────────────────────────────── */
+.btn-history {
+  margin-top: 24px;
+  padding: 10px 28px;
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+/* ── History screen ────────────────────────────────────────── */
+#history-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+  width: 100%;
+  max-width: 380px;
+}
+#history-screen.active { display: flex; }
+
+#history-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.btn-back {
+  padding: 8px 16px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+#history-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+}
+
+/* ── Stats cards ───────────────────────────────────────────── */
+#history-stats {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  padding: 14px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: #4ECDC4;
+  line-height: 1.2;
+}
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  margin-top: 4px;
+}
+
+/* ── History list ──────────────────────────────────────────── */
+#history-list {
+  width: 100%;
+  max-height: 50vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.history-date-group {
+  margin-bottom: 16px;
+}
+.history-date-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+.history-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.history-entry-name {
+  font-size: 14px;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+.history-entry-meta {
+  font-size: 12px;
+  color: rgba(255,255,255,0.25);
+  font-family: var(--mono);
+}
+.history-empty {
+  text-align: center;
+  color: rgba(255,255,255,0.2);
+  font-size: 14px;
+  padding: 40px 0;
+  line-height: 1.8;
+}
+
+.btn-clear-history {
+  margin-top: 20px;
+  padding: 8px 20px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(255,100,100,0.5);
+  border-color: rgba(255,100,100,0.15);
+}
+
 /* ── Responsive tweaks ─────────────────────────────────────── */
 @media (max-width: 360px) {
   #timer-display { font-size: 48px; }
