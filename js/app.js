@@ -23,6 +23,9 @@
   let sessionMultiplier = 1;      // per-workout override (defaults from settings)
   let sessionRestMultiplier = 1;  // per-workout rest override
 
+  // ── Onboarding ─────────────────────────────────────────────
+  const ONBOARDING_KEY = "pajama-onboarding-done";
+
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
   let settings = { multiplier: 1, restMultiplier: 1, tts: false, announceHints: false, weeklyGoal: 3, ambient: false };
@@ -118,6 +121,13 @@
       swapPanel:         $("swap-panel"),
       swapCurrent:       $("swap-current"),
       swapOptions:       $("swap-options"),
+      onboardingScreen:  $("onboarding-screen"),
+      onboardingStep1:   $("onboarding-step1"),
+      onboardingStep2:   $("onboarding-step2"),
+      onboardingGuided:  $("onboarding-guided"),
+      onboardingQuick:   $("onboarding-quick"),
+      onboardingDone:    $("onboarding-done"),
+      onboardingChoiceSummary: $("onboarding-choice-summary"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -1487,6 +1497,48 @@
     }
   });
 
+  // ── Onboarding wizard ───────────────────────────────────────
+  function needsOnboarding() {
+    try { return !localStorage.getItem(ONBOARDING_KEY); } catch (_) { return false; }
+  }
+
+  function completeOnboarding() {
+    try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch (_) {}
+  }
+
+  function showOnboarding() {
+    els.onboardingScreen.classList.add("active");
+    els.pickerScreen.classList.remove("active");
+  }
+
+  function applyOnboardingPreset(preset) {
+    if (preset === "guided") {
+      settings.multiplier = 1.5;
+      settings.restMultiplier = 1.5;
+      settings.tts = true;
+      settings.announceHints = true;
+      els.onboardingChoiceSummary.textContent = "Guided & Relaxed — longer sessions with voice cues";
+    } else {
+      settings.multiplier = 1;
+      settings.restMultiplier = 1;
+      settings.tts = false;
+      settings.announceHints = false;
+      els.onboardingChoiceSummary.textContent = "Quick & Focused — standard timing, no extras";
+    }
+    saveSettings();
+
+    // Advance to step 2
+    els.onboardingStep1.style.display = "none";
+    els.onboardingStep2.style.display = "flex";
+  }
+
+  function dismissOnboarding() {
+    completeOnboarding();
+    els.onboardingScreen.classList.remove("active");
+    showPicker(false);
+    buildPicker();
+  }
+
   // ── Init ────────────────────────────────────────────────────
   async function init() {
     cacheDOM();
@@ -1502,12 +1554,13 @@
     // Check for shared workout import
     var importedId = checkImportHash();
 
-    // If only one workout, skip picker and go straight to it
-    var workoutKeys = Object.keys(allWorkouts());
-    if (importedId) {
+    // Show onboarding wizard on first launch (unless importing a shared workout)
+    if (!importedId && needsOnboarding()) {
+      showOnboarding();
+    } else if (importedId) {
       selectWorkout(importedId);
-    } else if (workoutKeys.length === 1) {
-      selectWorkout(workoutKeys[0]);
+    } else if (Object.keys(allWorkouts()).length === 1) {
+      selectWorkout(Object.keys(allWorkouts())[0]);
     } else {
       showPicker(false);
     }
@@ -1538,6 +1591,11 @@
     els.btnAddYoga.addEventListener("click", function () { addBuilderPhase("yoga"); });
     els.btnSaveWorkout.addEventListener("click", saveCustomWorkout);
     els.btnShare.addEventListener("click", shareCurrentWorkout);
+
+    // ── Onboarding ────────────────────────────────────────────
+    els.onboardingGuided.addEventListener("click", function () { applyOnboardingPreset("guided"); });
+    els.onboardingQuick.addEventListener("click", function () { applyOnboardingPreset("quick"); });
+    els.onboardingDone.addEventListener("click", dismissOnboarding);
 
     // ── Per-session multiplier (+/−) ──────────────────────────
     els.btnMultDown.addEventListener("click", function () {
