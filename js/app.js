@@ -298,7 +298,7 @@
   }
 
   // Re-acquire wake lock when the page becomes visible again
-  document.addEventListener("visibilitychange", () => {
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && state === "running") {
       requestWakeLock();
     }
@@ -1447,7 +1447,7 @@
   }
 
   // ── Keyboard shortcuts ──────────────────────────────────────
-  document.addEventListener("keydown", (e) => {
+  if (typeof document !== "undefined") document.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
       e.preventDefault();
       if (state === "countdown") skipCountdown();
@@ -1464,7 +1464,7 @@
   });
 
   // ── Browser history (Back button) ──────────────────────────
-  window.addEventListener("popstate", (e) => {
+  if (typeof window !== "undefined") window.addEventListener("popstate", (e) => {
     // If a workout is active (countdown/running/paused), stop it first
     if (state === "countdown" || state === "running" || state === "paused") {
       clearInterval(interval);
@@ -1616,14 +1616,25 @@
   }
 
   // ── Register service worker ─────────────────────────────────
-  if ("serviceWorker" in navigator) {
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
   // Boot
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  }
+
+  // Export pure utilities for testing
+  if (typeof module !== "undefined") {
+    module.exports = {
+      fmt, hintSpeechSecs, escHtml, fmtMultiplier,
+      buildPhases, filterHidden, encodeWorkout, decodeWorkout,
+      _settings: settings, _hiddenExercises: hiddenExercises,
+    };
   }
 })();
