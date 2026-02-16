@@ -1159,63 +1159,64 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Onboarding wizard
+   Onboarding modal
    ═══════════════════════════════════════════════════════════════ */
-#onboarding-screen {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
+#onboarding-backdrop {
   position: fixed;
   inset: 0;
-  background: var(--bg);
-  padding: 24px;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
 }
-#onboarding-screen.active { display: flex; }
+#onboarding-backdrop.open { opacity: 1; pointer-events: auto; }
+
+#onboarding-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  z-index: 210;
+  background: #1e2a3a;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 28px 24px;
+  width: calc(100% - 48px);
+  max-width: 340px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+#onboarding-modal.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+}
 
 .onboarding-step {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 340px;
   width: 100%;
-  animation: onboard-fade-in 0.4s ease;
 }
-@keyframes onboard-fade-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.onboarding-welcome {
-  font-size: 13px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.3);
-  margin-bottom: 6px;
-}
-.onboarding-title {
-  font-size: 26px;
-  font-weight: 700;
-  color: rgba(255,255,255,0.85);
-  margin-bottom: 32px;
-}
-.onboarding-question {
+.onboarding-modal-title {
   font-size: 16px;
-  color: rgba(255,255,255,0.5);
-  margin-bottom: 24px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 16px;
   text-align: center;
 }
 .onboarding-options {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .onboarding-card {
   width: 100%;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   cursor: pointer;
@@ -1230,53 +1231,67 @@ body {
   border-color: rgba(78,205,196,0.25);
 }
 .onboarding-card:active { transform: scale(0.98); }
-.onboarding-card-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-}
 .onboarding-card-label {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: rgba(255,255,255,0.85);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .onboarding-card-desc {
-  font-size: 13px;
-  color: rgba(255,255,255,0.4);
-  line-height: 1.5;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  line-height: 1.4;
 }
 
-/* Step 2 */
-.onboarding-done-check {
-  font-size: 48px;
-  color: #A8D08D;
-  margin-bottom: 16px;
-}
-.onboarding-subtitle {
-  font-size: 14px;
-  color: rgba(78,205,196,0.7);
-  margin-bottom: 32px;
-  text-align: center;
-}
-.onboarding-settings-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.onboarding-skip {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.2);
   font-size: 13px;
-  color: rgba(255,255,255,0.35);
-  margin-bottom: 36px;
-  flex-wrap: wrap;
-  justify-content: center;
+  font-family: var(--sans);
+  cursor: pointer;
+  padding: 12px 0 0;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.onboarding-skip:hover { color: rgba(255,255,255,0.4); }
+
+/* Step 2 */
+.onboarding-settings-hint {
+  font-size: 13px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 16px;
   text-align: center;
 }
-.onboarding-gear-icon {
-  display: inline-flex;
-  align-items: center;
-  color: rgba(255,255,255,0.5);
-  vertical-align: middle;
-}
-.onboarding-start-btn {
+.onboarding-done-btn {
   width: 100%;
-  padding: 16px;
-  font-size: 16px;
+}
+
+/* ── Settings presets (quick setup) ──────────────────────────── */
+.settings-presets {
+  display: flex;
+  gap: 8px;
+}
+.settings-preset {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.5);
+  font-size: 12px;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.settings-preset:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.15);
+}
+.settings-preset:active { transform: scale(0.97); }
+.settings-preset.active {
+  background: rgba(78,205,196,0.12);
+  border-color: rgba(78,205,196,0.3);
+  color: #4ECDC4;
 }
