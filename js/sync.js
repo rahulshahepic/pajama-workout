@@ -231,11 +231,33 @@ const SyncManager = (function () {
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(workouts)); } catch (_) {}
   }
 
-  /** Merge custom workouts: remote wins for same id, keep all unique. */
+  /** Get the effective timestamp for a workout entry (created, updated, or deleted). */
+  function workoutTimestamp(w) {
+    if (!w) return 0;
+    if (w._deleted) return w._deletedAt || 0;
+    return w._updatedAt || 0;
+  }
+
+  /**
+   * Merge custom workouts using per-key timestamps.
+   * For each key present on either side, the entry with the newer timestamp wins.
+   * Tombstones (_deleted) are preserved so deletions propagate across devices.
+   */
   function mergeCustomWorkouts(local, remote) {
     var merged = {};
-    for (var k in local) merged[k] = local[k];
-    for (var r in remote) merged[r] = remote[r]; // remote overwrites on conflict
+    var allKeys = {};
+    var k;
+    for (k in local) allKeys[k] = true;
+    for (k in remote) allKeys[k] = true;
+
+    for (k in allKeys) {
+      var l = local[k];
+      var r = remote[k];
+      if (l && !r) { merged[k] = l; continue; }
+      if (r && !l) { merged[k] = r; continue; }
+      // Both exist — newer timestamp wins
+      merged[k] = workoutTimestamp(r) >= workoutTimestamp(l) ? r : l;
+    }
     return merged;
   }
 
@@ -316,7 +338,7 @@ const SyncManager = (function () {
 
       return {
         ok: true,
-        customWorkoutsChanged: Object.keys(mergedCustom).length !== Object.keys(localCustom).length,
+        customWorkoutsChanged: JSON.stringify(mergedCustom) !== JSON.stringify(localCustom),
         settingsChanged: settingsChanged,
       };
     } catch (e) {
@@ -330,6 +352,7 @@ const SyncManager = (function () {
     _mergeEntries: mergeEntries,
     _mergeCustomWorkouts: mergeCustomWorkouts,
     _mergeSettings: mergeSettings,
+    _workoutTimestamp: workoutTimestamp,
   };
 })();
 

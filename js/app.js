@@ -706,7 +706,8 @@
 
   function deleteCustomWorkout(id) {
     if (!customWorkouts[id]) return;
-    delete customWorkouts[id];
+    // Tombstone instead of hard-delete so sync can propagate the deletion
+    customWorkouts[id] = { _deleted: true, _deletedAt: Date.now() };
     saveCustomWorkouts();
     buildPicker();
   }
@@ -882,7 +883,9 @@
   function allWorkouts() {
     var merged = {};
     for (var k in WORKOUTS) merged[k] = WORKOUTS[k];
-    for (var c in customWorkouts) merged[c] = customWorkouts[c];
+    for (var c in customWorkouts) {
+      if (!customWorkouts[c]._deleted) merged[c] = customWorkouts[c];
+    }
     return merged;
   }
 
@@ -984,6 +987,7 @@
       subtitle: "Custom workout",
       description: "",
       custom: true,
+      _updatedAt: Date.now(),
       phases: builderPhaseList.map(function (p) {
         return { name: p.name, type: p.type, duration: p.duration, hint: p.hint || "" };
       }),
@@ -1451,6 +1455,7 @@
       subtitle: "Imported workout",
       description: "",
       custom: true,
+      _updatedAt: Date.now(),
       phases: data.phases,
     };
     saveCustomWorkouts();

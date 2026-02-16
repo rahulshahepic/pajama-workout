@@ -16,7 +16,7 @@ global.localStorage = {
 };
 
 const SyncManager = require("../js/sync.js");
-const { _mergeEntries: mergeEntries, _mergeCustomWorkouts: mergeCustomWorkouts, _mergeSettings: mergeSettings } = SyncManager;
+const { _mergeEntries: mergeEntries, _mergeCustomWorkouts: mergeCustomWorkouts, _mergeSettings: mergeSettings, _workoutTimestamp: workoutTimestamp } = SyncManager;
 
 // ── mergeEntries ────────────────────────────────────────────────
 describe("mergeEntries()", () => {
@@ -64,35 +64,114 @@ describe("mergeEntries()", () => {
   });
 });
 
+// ── workoutTimestamp ─────────────────────────────────────────────
+describe("workoutTimestamp()", () => {
+  it("returns 0 for null/undefined", () => {
+    assert.equal(workoutTimestamp(null), 0);
+    assert.equal(workoutTimestamp(undefined), 0);
+  });
+
+  it("returns _updatedAt for a live workout", () => {
+    assert.equal(workoutTimestamp({ title: "A", _updatedAt: 5000 }), 5000);
+  });
+
+  it("returns _deletedAt for a tombstone", () => {
+    assert.equal(workoutTimestamp({ _deleted: true, _deletedAt: 7000 }), 7000);
+  });
+
+  it("returns 0 for a workout with no timestamp", () => {
+    assert.equal(workoutTimestamp({ title: "old" }), 0);
+  });
+});
+
 // ── mergeCustomWorkouts ─────────────────────────────────────────
 describe("mergeCustomWorkouts()", () => {
   it("combines disjoint workout sets", () => {
-    const local = { a: { title: "A" } };
-    const remote = { b: { title: "B" } };
+    const local = { a: { title: "A", _updatedAt: 100 } };
+    const remote = { b: { title: "B", _updatedAt: 200 } };
     const merged = mergeCustomWorkouts(local, remote);
     assert.equal(Object.keys(merged).length, 2);
     assert.equal(merged.a.title, "A");
     assert.equal(merged.b.title, "B");
   });
 
-  it("remote wins on conflict (same key)", () => {
-    const local = { a: { title: "Local A" } };
-    const remote = { a: { title: "Remote A" } };
+  it("newer remote wins on conflict", () => {
+    const local = { a: { title: "Local A", _updatedAt: 100 } };
+    const remote = { a: { title: "Remote A", _updatedAt: 200 } };
     const merged = mergeCustomWorkouts(local, remote);
     assert.equal(merged.a.title, "Remote A");
   });
 
+  it("newer local wins on conflict", () => {
+    const local = { a: { title: "Local A", _updatedAt: 300 } };
+    const remote = { a: { title: "Remote A", _updatedAt: 200 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a.title, "Local A");
+  });
+
   it("preserves local-only entries", () => {
-    const local = { a: { title: "A" }, b: { title: "B" } };
-    const remote = { a: { title: "Remote A" } };
+    const local = { a: { title: "A", _updatedAt: 100 }, b: { title: "B", _updatedAt: 100 } };
+    const remote = { a: { title: "Remote A", _updatedAt: 200 } };
     const merged = mergeCustomWorkouts(local, remote);
     assert.equal(merged.b.title, "B");
   });
 
   it("handles empty inputs", () => {
     assert.deepEqual(mergeCustomWorkouts({}, {}), {});
-    assert.equal(Object.keys(mergeCustomWorkouts({}, { a: 1 })).length, 1);
-    assert.equal(Object.keys(mergeCustomWorkouts({ a: 1 }, {})).length, 1);
+    assert.equal(Object.keys(mergeCustomWorkouts({}, { a: { _updatedAt: 1 } })).length, 1);
+    assert.equal(Object.keys(mergeCustomWorkouts({ a: { _updatedAt: 1 } }, {})).length, 1);
+  });
+
+  // ── Tombstone / deletion tests ──────────────────────────────
+  it("local deletion wins over older remote version", () => {
+    const local = { a: { _deleted: true, _deletedAt: 300 } };
+    const remote = { a: { title: "A", _updatedAt: 200 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a._deleted, true);
+  });
+
+  it("remote deletion wins over older local version", () => {
+    const local = { a: { title: "A", _updatedAt: 200 } };
+    const remote = { a: { _deleted: true, _deletedAt: 300 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a._deleted, true);
+  });
+
+  it("newer re-creation wins over older deletion", () => {
+    const local = { a: { _deleted: true, _deletedAt: 200 } };
+    const remote = { a: { title: "Re-created", _updatedAt: 300 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a.title, "Re-created");
+    assert.equal(merged.a._deleted, undefined);
+  });
+
+  it("deletion from remote propagates to local-only set", () => {
+    const local = {};
+    const remote = { a: { _deleted: true, _deletedAt: 100 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a._deleted, true);
+  });
+
+  it("deleted workout does not resurrect on sync", () => {
+    // The core bug scenario: user deletes locally, remote still has it
+    const local = { a: { _deleted: true, _deletedAt: 500 } };
+    const remote = { a: { title: "Old workout", _updatedAt: 100 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a._deleted, true, "deleted workout should stay deleted");
+  });
+
+  it("equal timestamps: remote wins", () => {
+    const local = { a: { title: "Local", _updatedAt: 100 } };
+    const remote = { a: { title: "Remote", _updatedAt: 100 } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a.title, "Remote");
+  });
+
+  it("legacy workouts without timestamps: remote wins", () => {
+    const local = { a: { title: "Local" } };
+    const remote = { a: { title: "Remote" } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a.title, "Remote");
   });
 });
 
