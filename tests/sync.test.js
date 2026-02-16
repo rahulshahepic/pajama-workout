@@ -135,4 +135,31 @@ describe("mergeSettings()", () => {
     const merged = mergeSettings(local, remote);
     assert.equal(merged.multiplier, 2);
   });
+
+  it("preserves onboardingDone when remote wins", () => {
+    const local = { multiplier: 1, onboardingDone: false, _syncedAt: 1000 };
+    const remote = { multiplier: 2, onboardingDone: true, _syncedAt: 2000 };
+    const merged = mergeSettings(local, remote);
+    assert.equal(merged.onboardingDone, true);
+  });
+
+  it("preserves onboardingDone when local wins", () => {
+    const local = { multiplier: 1, onboardingDone: true, _syncedAt: 3000 };
+    const remote = { multiplier: 2, onboardingDone: false, _syncedAt: 1000 };
+    const merged = mergeSettings(local, remote);
+    assert.equal(merged.onboardingDone, true);
+  });
+
+  it("syncs all settings fields including onboardingDone", () => {
+    const local = { multiplier: 1, restMultiplier: 1, tts: false, announceHints: false, weeklyGoal: 3, ambient: false, onboardingDone: false, _syncedAt: 100 };
+    const remote = { multiplier: 1.5, restMultiplier: 1.5, tts: true, announceHints: true, weeklyGoal: 5, ambient: true, onboardingDone: true, _syncedAt: 200 };
+    const merged = mergeSettings(local, remote);
+    assert.equal(merged.multiplier, 1.5);
+    assert.equal(merged.restMultiplier, 1.5);
+    assert.equal(merged.tts, true);
+    assert.equal(merged.announceHints, true);
+    assert.equal(merged.weeklyGoal, 5);
+    assert.equal(merged.ambient, true);
+    assert.equal(merged.onboardingDone, true);
+  });
 });

@@ -10,6 +10,7 @@ const assert = require("node:assert/strict");
 const {
   fmt, hintSpeechSecs, escHtml, fmtMultiplier,
   buildPhases, filterHidden, encodeWorkout, decodeWorkout,
+  needsOnboarding, applyPreset,
   _settings: settings, _hiddenExercises: hiddenExercises,
 } = require("../js/app.js");
 
@@ -265,5 +266,55 @@ describe("encodeWorkout / decodeWorkout roundtrip", () => {
 
   it("returns null for valid JSON but missing fields", () => {
     assert.equal(decodeWorkout(btoa(JSON.stringify({ x: 1 }))), null);
+  });
+});
+
+// ── needsOnboarding ──────────────────────────────────────────────
+describe("needsOnboarding()", () => {
+  it("returns true when onboardingDone is false", () => {
+    settings.onboardingDone = false;
+    assert.equal(needsOnboarding(), true);
+  });
+
+  it("returns false when onboardingDone is true", () => {
+    settings.onboardingDone = true;
+    assert.equal(needsOnboarding(), false);
+    settings.onboardingDone = false;
+  });
+});
+
+// ── applyPreset ──────────────────────────────────────────────────
+describe("applyPreset()", () => {
+  beforeEach(() => {
+    // Reset to defaults
+    settings.multiplier = 1;
+    settings.restMultiplier = 1;
+    settings.tts = false;
+    settings.announceHints = false;
+  });
+
+  it("sets guided preset values", () => {
+    applyPreset("guided");
+    assert.equal(settings.multiplier, 1.5);
+    assert.equal(settings.restMultiplier, 1.5);
+    assert.equal(settings.tts, true);
+    assert.equal(settings.announceHints, true);
+  });
+
+  it("sets quick preset values", () => {
+    applyPreset("quick");
+    assert.equal(settings.multiplier, 1);
+    assert.equal(settings.restMultiplier, 1);
+    assert.equal(settings.tts, false);
+    assert.equal(settings.announceHints, false);
+  });
+
+  it("guided then quick returns to defaults", () => {
+    applyPreset("guided");
+    applyPreset("quick");
+    assert.equal(settings.multiplier, 1);
+    assert.equal(settings.restMultiplier, 1);
+    assert.equal(settings.tts, false);
+    assert.equal(settings.announceHints, false);
   });
 });
