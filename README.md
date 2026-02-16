@@ -108,8 +108,7 @@ Sign in with Google in Settings to sync your history, custom workouts, and setti
 
 | Key | Contents |
 |-----|----------|
-| `pajama-settings` | User settings (multipliers, audio, weekly goal) |
-| `pajama-onboarding-done` | Flag — onboarding wizard completed |
+| `pajama-settings` | User settings (multipliers, audio, weekly goal, onboarding flag) |
 | `pajama-workout-history` | Array of completed workout entries |
 | `pajama-custom-workouts` | User-created workouts |
 | `pajama-skip-counts` | Per-exercise skip counter |

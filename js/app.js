@@ -23,12 +23,9 @@
   let sessionMultiplier = 1;      // per-workout override (defaults from settings)
   let sessionRestMultiplier = 1;  // per-workout rest override
 
-  // ── Onboarding ─────────────────────────────────────────────
-  const ONBOARDING_KEY = "pajama-onboarding-done";
-
   // ── User settings (persisted to localStorage) ──────────────
   const SETTINGS_KEY = "pajama-settings";
-  let settings = { multiplier: 1, restMultiplier: 1, tts: false, announceHints: false, weeklyGoal: 3, ambient: false };
+  let settings = { multiplier: 1, restMultiplier: 1, tts: false, announceHints: false, weeklyGoal: 3, ambient: false, onboardingDone: false };
 
   function loadSettings() {
     try {
@@ -40,6 +37,7 @@
         settings.announceHints = !!s.announceHints;
         settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
         settings.ambient = !!s.ambient;
+        settings.onboardingDone = !!s.onboardingDone;
       }
     } catch (_) {}
   }
@@ -1499,11 +1497,12 @@
 
   // ── Onboarding wizard ───────────────────────────────────────
   function needsOnboarding() {
-    try { return !localStorage.getItem(ONBOARDING_KEY); } catch (_) { return false; }
+    return !settings.onboardingDone;
   }
 
   function completeOnboarding() {
-    try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch (_) {}
+    settings.onboardingDone = true;
+    saveSettings();
   }
 
   function showOnboarding() {
