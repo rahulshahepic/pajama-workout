@@ -91,6 +91,11 @@ describe("index.html required DOM elements", () => {
     "tts-toggle", "hints-toggle", "ambient-toggle",
     "fab-create", "wake-indicator",
     "swap-backdrop", "swap-panel",
+    // Onboarding
+    "onboarding-backdrop", "onboarding-modal", "onboarding-step1", "onboarding-step2",
+    "onboarding-guided", "onboarding-quick", "onboarding-skip", "onboarding-done",
+    // Settings presets
+    "preset-guided", "preset-quick",
   ];
 
   for (const id of requiredIds) {
@@ -99,6 +104,28 @@ describe("index.html required DOM elements", () => {
       assert.ok(pattern.test(html), `Missing DOM element: #${id}`);
     });
   }
+});
+
+describe("index.html onboarding accessibility", () => {
+  it("onboarding modal has role=dialog", () => {
+    assert.ok(/id=["']onboarding-modal["'][^>]*role=["']dialog["']/.test(html) ||
+              /role=["']dialog["'][^>]*id=["']onboarding-modal["']/.test(html));
+  });
+
+  it("onboarding modal has aria-modal=true", () => {
+    assert.ok(html.includes('aria-modal="true"'));
+  });
+
+  it("onboarding modal has aria-labelledby", () => {
+    assert.ok(html.includes('aria-labelledby="onboarding-title"'));
+  });
+
+  it("settings preset buttons have aria-pressed", () => {
+    assert.ok(/id=["']preset-guided["'][^>]*aria-pressed/.test(html) ||
+              /aria-pressed[^>]*id=["']preset-guided["']/.test(html));
+    assert.ok(/id=["']preset-quick["'][^>]*aria-pressed/.test(html) ||
+              /aria-pressed[^>]*id=["']preset-quick["']/.test(html));
+  });
 });
 
 describe("index.html basic structure", () => {

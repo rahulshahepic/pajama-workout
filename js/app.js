@@ -1478,6 +1478,12 @@
 
   // ── Browser history (Back button) ──────────────────────────
   if (typeof window !== "undefined") window.addEventListener("popstate", (e) => {
+    // If the onboarding modal is open, close it on back press
+    if (els.onboardingModal && els.onboardingModal.classList.contains("open")) {
+      dismissOnboarding();
+      return;
+    }
+
     // If a workout is active (countdown/running/paused), stop it first
     if (state === "countdown" || state === "running" || state === "paused") {
       clearInterval(interval);
@@ -1514,6 +1520,8 @@
     showPicker(false);
     els.onboardingBackdrop.classList.add("open");
     els.onboardingModal.classList.add("open");
+    // Focus the first interactive element for accessibility
+    els.onboardingGuided.focus();
   }
 
   function applyPreset(preset) {
@@ -1569,6 +1577,8 @@
                   settings.tts === false && settings.announceHints === false;
     els.presetGuided.classList.toggle("active", isGuided);
     els.presetQuick.classList.toggle("active", isQuick);
+    els.presetGuided.setAttribute("aria-pressed", isGuided);
+    els.presetQuick.setAttribute("aria-pressed", isQuick);
   }
 
   // ── Init ────────────────────────────────────────────────────
@@ -1629,6 +1639,26 @@
     els.onboardingQuick.addEventListener("click", function () { applyOnboardingPreset("quick"); });
     els.onboardingSkip.addEventListener("click", dismissOnboarding);
     els.onboardingDone.addEventListener("click", dismissOnboarding);
+
+    // Focus trap: keep Tab within the modal while it's open
+    els.onboardingModal.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      var focusable = els.onboardingModal.querySelectorAll("button:not([style*='display:none'] button)");
+      // Filter to visible buttons only
+      var items = [];
+      for (var i = 0; i < focusable.length; i++) {
+        if (focusable[i].offsetParent !== null) items.push(focusable[i]);
+      }
+      if (items.length === 0) return;
+      var first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
 
     // ── Settings presets ──────────────────────────────────────
     els.presetGuided.addEventListener("click", function () { applySettingsPreset("guided"); });
@@ -1733,6 +1763,7 @@
     module.exports = {
       fmt, hintSpeechSecs, escHtml, fmtMultiplier,
       buildPhases, filterHidden, encodeWorkout, decodeWorkout,
+      needsOnboarding, applyPreset,
       _settings: settings, _hiddenExercises: hiddenExercises,
     };
   }

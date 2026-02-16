@@ -52,10 +52,10 @@
 
   <!-- ═══ Onboarding modal ═══ -->
   <div id="onboarding-backdrop"></div>
-  <div id="onboarding-modal">
+  <div id="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
     <!-- Step 1: Choose your style -->
     <div id="onboarding-step1" class="onboarding-step">
-      <div class="onboarding-modal-title">How do you like to work out?</div>
+      <div class="onboarding-modal-title" id="onboarding-title">How do you like to work out?</div>
       <div class="onboarding-options">
         <button class="onboarding-card" id="onboarding-guided">
           <div class="onboarding-card-label">Guided &amp; Relaxed</div>
@@ -91,8 +91,8 @@
     <div class="settings-section">
       <div class="settings-section-label">QUICK SETUP</div>
       <div class="settings-presets">
-        <button class="settings-preset" id="preset-guided">Guided &amp; Relaxed</button>
-        <button class="settings-preset" id="preset-quick">Quick &amp; Focused</button>
+        <button class="settings-preset" id="preset-guided" aria-pressed="false">Guided &amp; Relaxed</button>
+        <button class="settings-preset" id="preset-quick" aria-pressed="false">Quick &amp; Focused</button>
       </div>
     </div>
 
