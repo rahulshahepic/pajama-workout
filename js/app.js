@@ -143,22 +143,14 @@
   }
 
   function summarise(phasesArr, mult, restMult) {
+    var built = buildPhases(phasesArr, mult || 1, restMult || (mult || 1), settings.announceHints);
     let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
-    var m = mult || 1;
-    var rm = restMult || m;
-    for (var i = 0; i < phasesArr.length; i++) {
-      var p = phasesArr[i];
+    for (var i = 0; i < built.length; i++) {
+      var p = built[i];
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
       if (p.type === "yoga") yogaCount++;
-      var dur = Math.round(p.duration * (p.type === "rest" ? rm : m));
-      // If announceHints is on, rest phases may be extended so the
-      // next phase's hint has time to be read aloud.
-      if (settings.announceHints && p.type === "rest" && i + 1 < phasesArr.length) {
-        var nextHint = phasesArr[i + 1].hint;
-        if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
-      }
-      total += dur;
+      total += p.duration;
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
@@ -169,19 +161,29 @@
   }
 
   /**
-   * Build the final phase array with durations adjusted for multipliers
-   * and (when announceHints is on) for minimum rest to fit the next hint.
+   * Build the final phase array with durations adjusted for multipliers.
+   * When withHints is true, ensures every hinted non-rest phase is
+   * preceded by a rest long enough for the full TTS announcement.
    */
-  function buildPhases(raw, m, rm) {
+  function buildPhases(raw, m, rm, withHints) {
     var result = [];
     for (var i = 0; i < raw.length; i++) {
       var p = raw[i];
       var mult = p.type === "rest" ? rm : m;
       var dur = Math.round(p.duration * mult);
-      if (settings.announceHints && p.type === "rest" && i + 1 < raw.length) {
-        var nextHint = raw[i + 1].hint;
-        if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
+
+      // When hints are on, ensure every hinted non-rest phase is
+      // preceded by a rest long enough for the full TTS announcement.
+      if (withHints && p.type !== "rest" && p.hint) {
+        var needed = hintSpeechSecs("Next: " + p.name + ". " + p.hint);
+        var prev = result[result.length - 1];
+        if (prev && prev.type === "rest") {
+          prev.duration = Math.max(prev.duration, needed);
+        } else {
+          result.push({ name: "Rest", type: "rest", duration: needed, hint: "" });
+        }
       }
+
       result.push({ name: p.name, type: p.type, duration: dur, hint: p.hint });
     }
     return result;
@@ -218,10 +220,14 @@
   }
 
   // ── TTS (text-to-speech) ────────────────────────────────────
+  var TTS_RATE      = 1.1;  // rate for short cues (phase names, "Next: …")
+  var TTS_HINT_RATE = 1.0;  // rate for longer hint announcements
+  var TTS_BASE_WPS  = 2.5;  // ~words-per-second at rate 1.0
+
   function speak(text) {
     if (!settings.tts || !window.speechSynthesis) return;
     var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.1;
+    u.rate = TTS_RATE;
     u.volume = 0.8;
     speechSynthesis.speak(u);
   }
@@ -230,16 +236,16 @@
   function speakHint(text) {
     if (!settings.announceHints || !window.speechSynthesis) return;
     var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.0;
+    u.rate = TTS_HINT_RATE;
     u.volume = 0.8;
     speechSynthesis.speak(u);
   }
 
-  /** Estimate how many seconds TTS needs for a given text (~2.5 words/sec at rate 1.0, +1s buffer). */
+  /** Estimate how many seconds TTS needs for a given text at hint rate (+1s buffer). */
   function hintSpeechSecs(text) {
     if (!text) return 0;
     var words = text.trim().split(/\s+/).length;
-    return Math.ceil(words / 2.5) + 1;
+    return Math.ceil(words / (TTS_BASE_WPS * TTS_HINT_RATE)) + 1;
   }
 
   function cancelSpeech() {
@@ -345,7 +351,11 @@
     }
     if (p.type === "work" || p.type === "rest") {
       const workPhases = phases.filter(x => x.type === "work");
-      const exNum = Math.floor(idx / 2) + 1;
+      // For rest phases, find the nearest work phase to determine position
+      const ref = p.type === "rest"
+        ? phases.slice(0, idx + 1).findLast(x => x.type === "work") || workPhases[0]
+        : p;
+      const exNum = ref ? workPhases.indexOf(ref) + 1 : 1;
       return `Exercise ${exNum} of ${workPhases.length}`;
     }
     const stretches = phases.filter(x => x.type === "stretch");
@@ -376,6 +386,7 @@
     const progress = (p.duration - timeLeft) / p.duration;
     const offset   = RING_CIRCUMFERENCE * (1 - progress);
 
+    applyTheme(p.type);
     els.timerRing.setAttribute("stroke-dashoffset", offset);
     els.timerDisplay.textContent = fmt(timeLeft);
     els.progressFill.style.width = (elapsed / totalTime * 100) + "%";
@@ -394,6 +405,10 @@
     els.btnReset.style.display  = (st === "paused" || st === "running" || st === "countdown") ? "inline-block" : "none";
     els.btnSkip.style.display   = (st === "running" || st === "paused" || st === "countdown") ? "inline-block" : "none";
     els.btnHome.style.display   = (st === "idle" || st === "done") ? "inline-block" : "none";
+    // On done screen, DONE is primary action, AGAIN is secondary
+    els.btnStart.className = st === "done" ? "btn btn-secondary" : "btn btn-primary";
+    els.btnHome.className  = st === "done" ? "btn btn-primary btn-home" : "btn btn-secondary btn-home";
+    els.btnHome.textContent = st === "done" ? "DONE" : "\u2190 HOME";
   }
 
   // ── Done screen ─────────────────────────────────────────────
@@ -457,9 +472,10 @@
       else cue("start");
 
       speak(nx.name);
-      // If entering a rest phase with announceHints, read the upcoming hint
+      // During rest phases, preview the upcoming phase name + hint
       if (settings.announceHints && nx.type === "rest" && phaseIndex + 1 < phases.length) {
-        speakHint(phases[phaseIndex + 1].hint);
+        const upcoming = phases[phaseIndex + 1];
+        speakHint("Next: " + upcoming.name + (upcoming.hint ? ". " + upcoming.hint : ""));
       }
       applyTheme(nx.type);
       render();
@@ -469,9 +485,13 @@
     elapsed++;
     if (timeLeft === 3) {
       cue("tick");
-      // Announce what's next at 3 seconds remaining
+      // Announce what's next at 3 seconds — skip during rest since we
+      // already gave the full preview when the rest phase started.
       var nextPhase = phases[phaseIndex + 1];
-      if (nextPhase) speak("Next: " + nextPhase.name);
+      var currentType = phases[phaseIndex].type;
+      if (nextPhase && !(settings.announceHints && currentType === "rest")) {
+        speak("Next: " + nextPhase.name);
+      }
     } else if (timeLeft < 3 && timeLeft > 0) {
       cue("tick");
     }
@@ -499,15 +519,18 @@
   }
 
   function startCountdown(secs) {
-    // When announceHints is on, ensure the countdown is long enough for the first hint
-    if (settings.announceHints && phases.length > 0 && phases[0].hint) {
-      secs = Math.max(secs, hintSpeechSecs(phases[0].hint));
+    // When announceHints is on, preview the first exercise during countdown.
+    // phases[0] might be an injected rest, so find the first non-rest phase.
+    var firstExercise = phases.find(function (p) { return p.type !== "rest"; });
+    if (settings.announceHints && firstExercise && firstExercise.hint) {
+      var announcement = "First up: " + firstExercise.name + ". " + firstExercise.hint;
+      secs = Math.max(secs, hintSpeechSecs(announcement));
     }
     countdownLeft = secs;
     state = "countdown";
     speak("Get ready");
-    if (settings.announceHints && phases.length > 0 && phases[0].hint) {
-      speakHint(phases[0].hint);
+    if (settings.announceHints && firstExercise && firstExercise.hint) {
+      speakHint("First up: " + firstExercise.name + ". " + firstExercise.hint);
     }
     renderCountdown();
     showButtons("countdown");
@@ -847,7 +870,11 @@
     els.timerScreen.appendChild(banner);
   }
 
-  /** Filter out hidden exercises for a given workout. */
+  /**
+   * Filter out hidden exercises for a given workout.
+   * Must be called BEFORE buildPhases — this removes orphaned rests left
+   * by hidden exercises, then buildPhases may re-inject rests for hints.
+   */
   function filterHidden(workoutId, phasesArr) {
     return phasesArr.filter(function (p) {
       if (p.type === "rest") return true;
@@ -1016,13 +1043,18 @@
     hideBuilder();
   }
 
+  /** filterHidden → buildPhases in the correct order. */
+  function preparePhases(workoutId, rawPhases, m, rm) {
+    return buildPhases(filterHidden(workoutId, rawPhases), m, rm, settings.announceHints);
+  }
+
   /** Rebuild phases from the original workout using sessionMultiplier. */
   function applySessionMultiplier() {
     if (!currentWorkoutId) return;
     var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
     var rm = sessionRestMultiplier;
-    phases = buildPhases(filterHidden(currentWorkoutId, w.phases), m, rm);
+    phases = preparePhases(currentWorkoutId, w.phases, m, rm);
     totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
     timeLeft = phases[0].duration;
 
@@ -1039,8 +1071,7 @@
     const w = allWorkouts()[id];
     var m = sessionMultiplier;
     var rm = sessionRestMultiplier;
-    var filtered = filterHidden(id, w.phases);
-    phases = buildPhases(filtered, m, rm);
+    phases = preparePhases(id, w.phases, m, rm);
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
     els.pickerScreen.classList.remove("active");
