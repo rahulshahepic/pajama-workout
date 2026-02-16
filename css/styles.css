@@ -775,7 +775,10 @@ body {
   transition: background 0.15s ease;
 }
 .btn-builder-add:hover { background: rgba(255,255,255,0.04); }
-.btn-add-yoga { color: rgba(232,164,74,0.5); border-color: rgba(232,164,74,0.15); }
+#btn-add-work    { color: rgba(78,205,196,0.5);  border-color: rgba(78,205,196,0.15);  }
+#btn-add-rest    { color: rgba(108,99,255,0.5);  border-color: rgba(108,99,255,0.15);  }
+#btn-add-stretch { color: rgba(168,208,141,0.5); border-color: rgba(168,208,141,0.15); }
+.btn-add-yoga    { color: rgba(232,164,74,0.5);  border-color: rgba(232,164,74,0.15);  }
 
 /* ── Phase list (Ready screen — tap to swap) ─────────────────── */
 #phase-list-container {
