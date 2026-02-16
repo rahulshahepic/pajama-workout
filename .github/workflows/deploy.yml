@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Stamp APP_VERSION with git SHA for cache busting
+        run: sed -i "s/const APP_VERSION = .*/const APP_VERSION = \"$(git rev-parse --short HEAD)\";/" js/config.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
