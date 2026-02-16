@@ -173,6 +173,58 @@ describe("mergeCustomWorkouts()", () => {
     const merged = mergeCustomWorkouts(local, remote);
     assert.equal(merged.a.title, "Remote");
   });
+
+  // ── skipLegacyRemote (migration) tests ────────────────────
+  it("skipLegacyRemote: drops remote-only legacy entries", () => {
+    const local = {};
+    const remote = { a: { title: "Old workout" } };
+    const merged = mergeCustomWorkouts(local, remote, { skipLegacyRemote: true });
+    assert.equal(merged.a, undefined);
+  });
+
+  it("skipLegacyRemote: keeps remote-only entries with _updatedAt", () => {
+    const local = {};
+    const remote = { a: { title: "New workout", _updatedAt: 500 } };
+    const merged = mergeCustomWorkouts(local, remote, { skipLegacyRemote: true });
+    assert.equal(merged.a.title, "New workout");
+  });
+
+  it("skipLegacyRemote: keeps remote-only tombstones", () => {
+    const local = {};
+    const remote = { a: { _deleted: true, _deletedAt: 500 } };
+    const merged = mergeCustomWorkouts(local, remote, { skipLegacyRemote: true });
+    assert.equal(merged.a._deleted, true);
+  });
+
+  it("skipLegacyRemote: does not affect entries that exist on both sides", () => {
+    const local = { a: { title: "Local", _updatedAt: 100 } };
+    const remote = { a: { title: "Remote" } };
+    const merged = mergeCustomWorkouts(local, remote, { skipLegacyRemote: true });
+    // Local has higher timestamp (100 > 0), so local wins
+    assert.equal(merged.a.title, "Local");
+  });
+
+  it("without skipLegacyRemote: imports remote-only legacy entries (fresh device)", () => {
+    const local = {};
+    const remote = { a: { title: "Old workout" } };
+    const merged = mergeCustomWorkouts(local, remote);
+    assert.equal(merged.a.title, "Old workout");
+  });
+
+  it("skipLegacyRemote: mixed scenario — keeps new, drops legacy, keeps tombstones", () => {
+    const local = { b: { title: "Local B", _updatedAt: 200 } };
+    const remote = {
+      a: { title: "Legacy A" },                         // legacy, remote-only → dropped
+      b: { title: "Remote B", _updatedAt: 100 },        // both sides → local wins (200 > 100)
+      c: { title: "New C", _updatedAt: 300 },            // remote-only with timestamp → kept
+      d: { _deleted: true, _deletedAt: 400 },            // remote-only tombstone → kept
+    };
+    const merged = mergeCustomWorkouts(local, remote, { skipLegacyRemote: true });
+    assert.equal(merged.a, undefined, "legacy remote-only should be dropped");
+    assert.equal(merged.b.title, "Local B", "local should win (newer timestamp)");
+    assert.equal(merged.c.title, "New C", "new remote-only should be kept");
+    assert.equal(merged.d._deleted, true, "tombstone should be kept");
+  });
 });
 
 // ── mergeSettings ───────────────────────────────────────────────

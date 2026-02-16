@@ -242,8 +242,13 @@ const SyncManager = (function () {
    * Merge custom workouts using per-key timestamps.
    * For each key present on either side, the entry with the newer timestamp wins.
    * Tombstones (_deleted) are preserved so deletions propagate across devices.
+   *
+   * opts.skipLegacyRemote — when true, remote-only entries that lack _updatedAt
+   * and _deletedAt (legacy entries from before the tombstone fix) are dropped.
+   * This prevents hard-deleted workouts from resurrecting via old remote data.
    */
-  function mergeCustomWorkouts(local, remote) {
+  function mergeCustomWorkouts(local, remote, opts) {
+    opts = opts || {};
     var merged = {};
     var allKeys = {};
     var k;
@@ -254,7 +259,13 @@ const SyncManager = (function () {
       var l = local[k];
       var r = remote[k];
       if (l && !r) { merged[k] = l; continue; }
-      if (r && !l) { merged[k] = r; continue; }
+      if (r && !l) {
+        // Skip legacy remote-only entries on migrated devices —
+        // they were likely hard-deleted before the tombstone fix
+        if (opts.skipLegacyRemote && !r._updatedAt && !r._deletedAt) continue;
+        merged[k] = r;
+        continue;
+      }
       // Both exist — newer timestamp wins
       merged[k] = workoutTimestamp(r) >= workoutTimestamp(l) ? r : l;
     }
@@ -317,7 +328,9 @@ const SyncManager = (function () {
       }
 
       var merged = mergeEntries(local.entries, remoteEntries);
-      var mergedCustom = mergeCustomWorkouts(localCustom, remoteCustom);
+      var localMigrated = false;
+      try { localMigrated = !!localStorage.getItem("pajama-custom-migrated"); } catch (_) {}
+      var mergedCustom = mergeCustomWorkouts(localCustom, remoteCustom, { skipLegacyRemote: localMigrated });
       var mergedSettings = mergeSettings(localSettings, remoteSettings);
 
       WorkoutHistory.replaceEntries(merged);

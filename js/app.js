@@ -866,6 +866,7 @@
 
   // ── Custom workouts (localStorage) ──────────────────────────
   var CUSTOM_KEY = "pajama-custom-workouts";
+  var CUSTOM_MIGRATED_KEY = "pajama-custom-migrated";
   var customWorkouts = {};
 
   function loadCustomWorkouts() {
@@ -873,6 +874,25 @@
       var raw = JSON.parse(localStorage.getItem(CUSTOM_KEY));
       if (raw && typeof raw === "object") customWorkouts = raw;
     } catch (_) {}
+
+    // One-time migration: stamp existing workouts with _updatedAt so the
+    // merge can distinguish "created after tombstone fix" from legacy.
+    // Only set the migration flag for returning users (who have settings)
+    // so that fresh devices still import legacy workouts from remote.
+    if (!localStorage.getItem(CUSTOM_MIGRATED_KEY)) {
+      var isReturningUser = !!localStorage.getItem(SETTINGS_KEY);
+      var needsSave = false;
+      for (var k in customWorkouts) {
+        if (!customWorkouts[k]._deleted && !customWorkouts[k]._updatedAt) {
+          customWorkouts[k]._updatedAt = Date.now();
+          needsSave = true;
+        }
+      }
+      if (needsSave) saveCustomWorkouts();
+      if (isReturningUser) {
+        try { localStorage.setItem(CUSTOM_MIGRATED_KEY, "1"); } catch (_) {}
+      }
+    }
   }
 
   function saveCustomWorkouts() {
