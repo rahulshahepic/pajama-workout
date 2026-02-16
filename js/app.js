@@ -37,7 +37,9 @@
         settings.announceHints = !!s.announceHints;
         settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
         settings.ambient = !!s.ambient;
-        settings.onboardingDone = !!s.onboardingDone;
+        // If settings exist but onboardingDone is missing, this is an existing
+        // user from before onboarding was added — treat as already onboarded.
+        settings.onboardingDone = ("onboardingDone" in s) ? !!s.onboardingDone : true;
       }
     } catch (_) {}
   }
@@ -119,13 +121,16 @@
       swapPanel:         $("swap-panel"),
       swapCurrent:       $("swap-current"),
       swapOptions:       $("swap-options"),
-      onboardingScreen:  $("onboarding-screen"),
+      onboardingBackdrop:$("onboarding-backdrop"),
+      onboardingModal:   $("onboarding-modal"),
       onboardingStep1:   $("onboarding-step1"),
       onboardingStep2:   $("onboarding-step2"),
       onboardingGuided:  $("onboarding-guided"),
       onboardingQuick:   $("onboarding-quick"),
       onboardingDone:    $("onboarding-done"),
       onboardingChoiceSummary: $("onboarding-choice-summary"),
+      presetGuided:      $("preset-guided"),
+      presetQuick:       $("preset-quick"),
     };
 
     // Derive ring circumference from the actual SVG attribute
@@ -1317,6 +1322,7 @@
     els.hintsToggle.checked = settings.announceHints;
     els.ambientToggle.checked = settings.ambient;
     els.goalLabel.textContent = settings.weeklyGoal + "\u00D7/wk";
+    updatePresetHighlight();
     els.settingsBackdrop.classList.add("open");
     els.settingsPanel.classList.add("open");
     els.settingsPanel.style.transform = "";
@@ -1506,25 +1512,31 @@
   }
 
   function showOnboarding() {
-    els.onboardingScreen.classList.add("active");
-    els.pickerScreen.classList.remove("active");
+    showPicker(false);
+    els.onboardingBackdrop.classList.add("open");
+    els.onboardingModal.classList.add("open");
   }
 
-  function applyOnboardingPreset(preset) {
+  function applyPreset(preset) {
     if (preset === "guided") {
       settings.multiplier = 1.5;
       settings.restMultiplier = 1.5;
       settings.tts = true;
       settings.announceHints = true;
-      els.onboardingChoiceSummary.textContent = "Guided & Relaxed — longer sessions with voice cues";
     } else {
       settings.multiplier = 1;
       settings.restMultiplier = 1;
       settings.tts = false;
       settings.announceHints = false;
-      els.onboardingChoiceSummary.textContent = "Quick & Focused — standard timing, no extras";
     }
     saveSettings();
+  }
+
+  function applyOnboardingPreset(preset) {
+    applyPreset(preset);
+    els.onboardingChoiceSummary.textContent = preset === "guided"
+      ? "Guided & Relaxed"
+      : "Quick & Focused";
 
     // Advance to step 2
     els.onboardingStep1.style.display = "none";
@@ -1533,9 +1545,31 @@
 
   function dismissOnboarding() {
     completeOnboarding();
-    els.onboardingScreen.classList.remove("active");
-    showPicker(false);
+    els.onboardingBackdrop.classList.remove("open");
+    els.onboardingModal.classList.remove("open");
     buildPicker();
+  }
+
+  /** Apply a preset from Settings and update the UI to match. */
+  function applySettingsPreset(preset) {
+    applyPreset(preset);
+    // Update all settings UI controls to reflect new values
+    els.multiplierSlider.value = settings.multiplier;
+    els.multiplierLabel.innerHTML = fmtMultiplier(settings.multiplier);
+    els.restMultSlider.value = settings.restMultiplier;
+    els.restMultLabel.innerHTML = fmtMultiplier(settings.restMultiplier);
+    els.ttsToggle.checked = settings.tts;
+    els.hintsToggle.checked = settings.announceHints;
+    updatePresetHighlight();
+  }
+
+  function updatePresetHighlight() {
+    var isGuided = settings.multiplier === 1.5 && settings.restMultiplier === 1.5 &&
+                   settings.tts === true && settings.announceHints === true;
+    var isQuick = settings.multiplier === 1 && settings.restMultiplier === 1 &&
+                  settings.tts === false && settings.announceHints === false;
+    els.presetGuided.classList.toggle("active", isGuided);
+    els.presetQuick.classList.toggle("active", isQuick);
   }
 
   // ── Init ────────────────────────────────────────────────────
@@ -1596,6 +1630,10 @@
     els.onboardingQuick.addEventListener("click", function () { applyOnboardingPreset("quick"); });
     els.onboardingDone.addEventListener("click", dismissOnboarding);
 
+    // ── Settings presets ──────────────────────────────────────
+    els.presetGuided.addEventListener("click", function () { applySettingsPreset("guided"); });
+    els.presetQuick.addEventListener("click", function () { applySettingsPreset("quick"); });
+
     // ── Per-session multiplier (+/−) ──────────────────────────
     els.btnMultDown.addEventListener("click", function () {
       if (state !== "idle" || !currentWorkoutId) return;
@@ -1623,6 +1661,7 @@
     els.multiplierSlider.addEventListener("change", function () {
       saveSettings();
       buildPicker();   // update displayed times
+      updatePresetHighlight();
     });
 
     els.restMultSlider.addEventListener("input", function () {
@@ -1632,16 +1671,19 @@
     });
     els.restMultSlider.addEventListener("change", function () {
       saveSettings();
+      updatePresetHighlight();
     });
 
     els.ttsToggle.addEventListener("change", function () {
       settings.tts = this.checked;
       saveSettings();
+      updatePresetHighlight();
     });
 
     els.hintsToggle.addEventListener("change", function () {
       settings.announceHints = this.checked;
       saveSettings();
+      updatePresetHighlight();
     });
 
     els.ambientToggle.addEventListener("change", function () {

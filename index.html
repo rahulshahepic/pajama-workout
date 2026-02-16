@@ -50,41 +50,34 @@
     <button id="fab-create" aria-label="Create workout">+</button>
   </div>
 
-  <!-- ═══ Onboarding wizard ═══ -->
-  <div id="onboarding-screen">
+  <!-- ═══ Onboarding modal ═══ -->
+  <div id="onboarding-backdrop"></div>
+  <div id="onboarding-modal">
     <!-- Step 1: Choose your style -->
     <div id="onboarding-step1" class="onboarding-step">
-      <div class="onboarding-welcome">Welcome to</div>
-      <div class="onboarding-title">Pajama Workout</div>
-      <div class="onboarding-question">How do you like to work out?</div>
+      <div class="onboarding-modal-title">How do you like to work out?</div>
       <div class="onboarding-options">
         <button class="onboarding-card" id="onboarding-guided">
-          <div class="onboarding-card-icon">🧘</div>
           <div class="onboarding-card-label">Guided &amp; Relaxed</div>
-          <div class="onboarding-card-desc">Longer sessions, more rest between exercises, and voice cues that explain each move</div>
+          <div class="onboarding-card-desc">Longer sessions, more rest, voice cues explain each move</div>
         </button>
         <button class="onboarding-card" id="onboarding-quick">
-          <div class="onboarding-card-icon">⚡</div>
           <div class="onboarding-card-label">Quick &amp; Focused</div>
-          <div class="onboarding-card-desc">Straight to the point — standard timing, no extra explanations</div>
+          <div class="onboarding-card-desc">Standard timing, no extra explanations</div>
         </button>
       </div>
     </div>
-    <!-- Step 2: Settings pointer -->
+    <!-- Step 2: Confirmation -->
     <div id="onboarding-step2" class="onboarding-step" style="display:none">
-      <div class="onboarding-done-check">&#10003;</div>
-      <div class="onboarding-title">You're all set</div>
-      <div class="onboarding-subtitle" id="onboarding-choice-summary"></div>
+      <div class="onboarding-modal-title" id="onboarding-choice-summary"></div>
       <div class="onboarding-settings-hint">
-        <span>You can change these anytime in</span>
-        <span class="onboarding-gear-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-          </svg>
-        </span>
-        <span>Settings</span>
+        Change anytime in
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Settings
       </div>
-      <button class="btn btn-primary onboarding-start-btn" id="onboarding-done">GET STARTED</button>
+      <button class="btn btn-primary onboarding-done-btn" id="onboarding-done">GOT IT</button>
     </div>
   </div>
 
@@ -93,6 +86,14 @@
   <div id="settings-panel">
     <div class="settings-handle"></div>
     <div class="settings-title">Settings</div>
+
+    <div class="settings-section">
+      <div class="settings-section-label">QUICK SETUP</div>
+      <div class="settings-presets">
+        <button class="settings-preset" id="preset-guided">Guided &amp; Relaxed</button>
+        <button class="settings-preset" id="preset-quick">Quick &amp; Focused</button>
+      </div>
+    </div>
 
     <div class="settings-section">
       <div class="settings-section-label">SESSION LENGTH</div>
