@@ -171,20 +171,19 @@
       var p = raw[i];
       var mult = p.type === "rest" ? rm : m;
       var dur = Math.round(p.duration * mult);
-      if (settings.announceHints && p.type === "rest" && i + 1 < raw.length) {
-        // Ensure existing rest phases are long enough for the upcoming hint
-        var nextHint = raw[i + 1].hint;
-        if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
-      }
-      // When announceHints is on, insert a rest before non-rest phases that
-      // have a hint and aren't already preceded by a rest phase.
+
+      // When announceHints is on, ensure every hinted non-rest phase is
+      // preceded by a rest long enough for the full TTS announcement.
       if (settings.announceHints && p.type !== "rest" && p.hint) {
+        var needed = hintSpeechSecs("Next: " + p.name + ". " + p.hint);
         var prev = result[result.length - 1];
-        if (!prev || prev.type !== "rest") {
-          var restDur = hintSpeechSecs(p.hint);
-          result.push({ name: "Rest", type: "rest", duration: restDur, hint: "" });
+        if (prev && prev.type === "rest") {
+          prev.duration = Math.max(prev.duration, needed);
+        } else {
+          result.push({ name: "Rest", type: "rest", duration: needed, hint: "" });
         }
       }
+
       result.push({ name: p.name, type: p.type, duration: dur, hint: p.hint });
     }
     return result;
@@ -348,7 +347,11 @@
     }
     if (p.type === "work" || p.type === "rest") {
       const workPhases = phases.filter(x => x.type === "work");
-      const exNum = Math.floor(idx / 2) + 1;
+      // For rest phases, find the nearest work phase to determine position
+      const ref = p.type === "rest"
+        ? phases.slice(0, idx + 1).findLast(x => x.type === "work") || workPhases[0]
+        : p;
+      const exNum = ref ? workPhases.indexOf(ref) + 1 : 1;
       return `Exercise ${exNum} of ${workPhases.length}`;
     }
     const stretches = phases.filter(x => x.type === "stretch");
@@ -478,9 +481,13 @@
     elapsed++;
     if (timeLeft === 3) {
       cue("tick");
-      // Announce what's next at 3 seconds remaining (name only — no time for details)
+      // Announce what's next at 3 seconds — skip during rest since we
+      // already gave the full preview when the rest phase started.
       var nextPhase = phases[phaseIndex + 1];
-      if (nextPhase) speak("Next: " + nextPhase.name);
+      var currentType = phases[phaseIndex].type;
+      if (nextPhase && !(settings.announceHints && currentType === "rest")) {
+        speak("Next: " + nextPhase.name);
+      }
     } else if (timeLeft < 3 && timeLeft > 0) {
       cue("tick");
     }
@@ -508,15 +515,18 @@
   }
 
   function startCountdown(secs) {
-    // When announceHints is on, ensure the countdown is long enough for the first hint
-    if (settings.announceHints && phases.length > 0 && phases[0].hint) {
-      secs = Math.max(secs, hintSpeechSecs(phases[0].hint));
+    // When announceHints is on, preview the first exercise during countdown.
+    // phases[0] might be an injected rest, so find the first non-rest phase.
+    var firstExercise = phases.find(function (p) { return p.type !== "rest"; });
+    if (settings.announceHints && firstExercise && firstExercise.hint) {
+      var announcement = "First up: " + firstExercise.name + ". " + firstExercise.hint;
+      secs = Math.max(secs, hintSpeechSecs(announcement));
     }
     countdownLeft = secs;
     state = "countdown";
     speak("Get ready");
-    if (settings.announceHints && phases.length > 0 && phases[0].hint) {
-      speakHint(phases[0].hint);
+    if (settings.announceHints && firstExercise && firstExercise.hint) {
+      speakHint("First up: " + firstExercise.name + ". " + firstExercise.hint);
     }
     renderCountdown();
     showButtons("countdown");

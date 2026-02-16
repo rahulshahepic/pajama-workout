@@ -168,8 +168,91 @@ describe("buildPhases()", () => {
       { name: "Move", type: "work", duration: 30, hint: "one two three four five six seven eight nine ten eleven twelve" },
     ];
     const result = buildPhases(phases, 1, 1);
-    // Rest should be extended to fit the hint speech time
-    assert.ok(result[0].duration >= hintSpeechSecs(phases[1].hint));
+    const needed = hintSpeechSecs("Next: Move. one two three four five six seven eight nine ten eleven twelve");
+    assert.ok(result[0].duration >= needed);
+    settings.announceHints = false;
+  });
+
+  it("injects rest before hinted phase when no preceding rest", () => {
+    settings.announceHints = true;
+    const phases = [
+      { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
+      { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
+    ];
+    const result = buildPhases(phases, 1, 1);
+    assert.equal(result.length, 4);
+    assert.equal(result[0].type, "rest");
+    assert.equal(result[1].name, "Squats");
+    assert.equal(result[2].type, "rest");
+    assert.equal(result[3].name, "Lunges");
+    settings.announceHints = false;
+  });
+
+  it("does not inject rest when one already precedes the hinted phase", () => {
+    settings.announceHints = true;
+    const phases = [
+      { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
+      { name: "Rest",   type: "rest", duration: 20, hint: "" },
+      { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
+    ];
+    const result = buildPhases(phases, 1, 1);
+    // Should inject before Squats, extend existing Rest before Lunges
+    const restCount = result.filter(p => p.type === "rest").length;
+    assert.equal(restCount, 2);
+    assert.equal(result[0].type, "rest");   // injected
+    assert.equal(result[1].name, "Squats");
+    assert.equal(result[2].type, "rest");   // existing, extended
+    assert.equal(result[3].name, "Lunges");
+    settings.announceHints = false;
+  });
+
+  it("injected rest duration accounts for full TTS announcement", () => {
+    settings.announceHints = true;
+    const phases = [
+      { name: "Push-ups", type: "work", duration: 40, hint: "Hands wider than shoulders body straight" },
+    ];
+    const result = buildPhases(phases, 1, 1);
+    const needed = hintSpeechSecs("Next: Push-ups. Hands wider than shoulders body straight");
+    assert.equal(result[0].type, "rest");
+    assert.equal(result[0].duration, needed);
+    settings.announceHints = false;
+  });
+
+  it("does not inject rests when announceHints is off", () => {
+    settings.announceHints = false;
+    const phases = [
+      { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
+      { name: "Lunges", type: "work", duration: 40, hint: "Step forward" },
+    ];
+    const result = buildPhases(phases, 1, 1);
+    assert.equal(result.length, 2);
+    assert.equal(result[0].name, "Squats");
+    assert.equal(result[1].name, "Lunges");
+  });
+
+  it("does not inject rest before phases without hints", () => {
+    settings.announceHints = true;
+    const phases = [
+      { name: "Squats", type: "work", duration: 40, hint: "" },
+      { name: "Lunges", type: "work", duration: 40, hint: "" },
+    ];
+    const result = buildPhases(phases, 1, 1);
+    assert.equal(result.length, 2);
+    settings.announceHints = false;
+  });
+
+  it("injects rest before hinted stretch and yoga phases", () => {
+    settings.announceHints = true;
+    const phases = [
+      { name: "Quad Stretch",  type: "stretch", duration: 25, hint: "Pull heel to glute" },
+      { name: "Mountain Pose", type: "yoga",    duration: 20, hint: "Stand tall" },
+    ];
+    const result = buildPhases(phases, 1, 1);
+    assert.equal(result.length, 4);
+    assert.equal(result[0].type, "rest");
+    assert.equal(result[1].type, "stretch");
+    assert.equal(result[2].type, "rest");
+    assert.equal(result[3].type, "yoga");
     settings.announceHints = false;
   });
 });
