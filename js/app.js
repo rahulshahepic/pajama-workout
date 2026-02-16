@@ -462,7 +462,11 @@
       else cue("start");
 
       speak(nx.name);
-      // If entering a rest phase with announceHints, read the upcoming phase name + hint
+      // At the start of each phase, announce the current phase's hint details
+      if (settings.announceHints && nx.hint) {
+        speakHint(nx.hint);
+      }
+      // If entering a rest phase, also preview what's coming next
       if (settings.announceHints && nx.type === "rest" && phaseIndex + 1 < phases.length) {
         const upcoming = phases[phaseIndex + 1];
         speakHint("Next: " + upcoming.name + (upcoming.hint ? ". " + upcoming.hint : ""));
@@ -475,13 +479,9 @@
     elapsed++;
     if (timeLeft === 3) {
       cue("tick");
-      // Announce what's next at 3 seconds remaining (name + hint for all phase types)
+      // Announce what's next at 3 seconds remaining (name only — no time for details)
       var nextPhase = phases[phaseIndex + 1];
-      if (nextPhase) {
-        var announcement = "Next: " + nextPhase.name;
-        if (settings.announceHints && nextPhase.hint) announcement += ". " + nextPhase.hint;
-        speak(announcement);
-      }
+      if (nextPhase) speak("Next: " + nextPhase.name);
     } else if (timeLeft < 3 && timeLeft > 0) {
       cue("tick");
     }
