@@ -143,22 +143,15 @@
   }
 
   function summarise(phasesArr, mult, restMult) {
+    // Use buildPhases to get the real phase list (including any injected rests)
+    var built = buildPhases(phasesArr, mult || 1, restMult || (mult || 1));
     let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
-    var m = mult || 1;
-    var rm = restMult || m;
-    for (var i = 0; i < phasesArr.length; i++) {
-      var p = phasesArr[i];
+    for (var i = 0; i < built.length; i++) {
+      var p = built[i];
       if (p.type === "work") workCount++;
       if (p.type === "stretch") stretchCount++;
       if (p.type === "yoga") yogaCount++;
-      var dur = Math.round(p.duration * (p.type === "rest" ? rm : m));
-      // If announceHints is on, rest phases may be extended so the
-      // next phase's hint has time to be read aloud.
-      if (settings.announceHints && p.type === "rest" && i + 1 < phasesArr.length) {
-        var nextHint = phasesArr[i + 1].hint;
-        if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
-      }
-      total += dur;
+      total += p.duration;
     }
     const mins = Math.round(total / 60);
     const parts = [`${mins} min`];
@@ -179,8 +172,18 @@
       var mult = p.type === "rest" ? rm : m;
       var dur = Math.round(p.duration * mult);
       if (settings.announceHints && p.type === "rest" && i + 1 < raw.length) {
+        // Ensure existing rest phases are long enough for the upcoming hint
         var nextHint = raw[i + 1].hint;
         if (nextHint) dur = Math.max(dur, hintSpeechSecs(nextHint));
+      }
+      // When announceHints is on, insert a rest before non-rest phases that
+      // have a hint and aren't already preceded by a rest phase.
+      if (settings.announceHints && p.type !== "rest" && p.hint) {
+        var prev = result[result.length - 1];
+        if (!prev || prev.type !== "rest") {
+          var restDur = hintSpeechSecs(p.hint);
+          result.push({ name: "Rest", type: "rest", duration: restDur, hint: "" });
+        }
       }
       result.push({ name: p.name, type: p.type, duration: dur, hint: p.hint });
     }
@@ -462,11 +465,7 @@
       else cue("start");
 
       speak(nx.name);
-      // At the start of each phase, announce the current phase's hint details
-      if (settings.announceHints && nx.hint) {
-        speakHint(nx.hint);
-      }
-      // If entering a rest phase, also preview what's coming next
+      // During rest phases, preview the upcoming phase name + hint
       if (settings.announceHints && nx.type === "rest" && phaseIndex + 1 < phases.length) {
         const upcoming = phases[phaseIndex + 1];
         speakHint("Next: " + upcoming.name + (upcoming.hint ? ". " + upcoming.hint : ""));
