@@ -1243,6 +1243,19 @@ body {
   line-height: 1.4;
 }
 
+.onboarding-skip {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.2);
+  font-size: 13px;
+  font-family: var(--sans);
+  cursor: pointer;
+  padding: 12px 0 0;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.onboarding-skip:hover { color: rgba(255,255,255,0.4); }
+
 /* Step 2 */
 .onboarding-settings-hint {
   font-size: 13px;

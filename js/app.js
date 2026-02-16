@@ -37,9 +37,7 @@
         settings.announceHints = !!s.announceHints;
         settings.weeklyGoal = typeof s.weeklyGoal === "number" ? s.weeklyGoal : 3;
         settings.ambient = !!s.ambient;
-        // If settings exist but onboardingDone is missing, this is an existing
-        // user from before onboarding was added — treat as already onboarded.
-        settings.onboardingDone = ("onboardingDone" in s) ? !!s.onboardingDone : true;
+        settings.onboardingDone = !!s.onboardingDone;
       }
     } catch (_) {}
   }
@@ -127,6 +125,7 @@
       onboardingStep2:   $("onboarding-step2"),
       onboardingGuided:  $("onboarding-guided"),
       onboardingQuick:   $("onboarding-quick"),
+      onboardingSkip:    $("onboarding-skip"),
       onboardingDone:    $("onboarding-done"),
       onboardingChoiceSummary: $("onboarding-choice-summary"),
       presetGuided:      $("preset-guided"),
@@ -1628,6 +1627,7 @@
     // ── Onboarding ────────────────────────────────────────────
     els.onboardingGuided.addEventListener("click", function () { applyOnboardingPreset("guided"); });
     els.onboardingQuick.addEventListener("click", function () { applyOnboardingPreset("quick"); });
+    els.onboardingSkip.addEventListener("click", dismissOnboarding);
     els.onboardingDone.addEventListener("click", dismissOnboarding);
 
     // ── Settings presets ──────────────────────────────────────
