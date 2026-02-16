@@ -16,6 +16,7 @@
   let timeLeft     = 0;
   let state        = "idle";      // idle | countdown | running | paused | done
   let countdownLeft = 0;
+  let countdownTotal = 0;
   let interval     = null;
   let audioCtx     = null;
   let wakeLock     = null;
@@ -328,7 +329,7 @@
     if (!t) return;
     document.body.style.background = t.bg;
     els.glow.style.background      = t.glow;
-    els.timerRing.setAttribute("stroke", t.accent);
+    els.timerRing.style.stroke = t.accent;
     els.timerDisplay.style.color   = t.accent;
     els.exerciseName.style.color   = t.accent;
     els.progressFill.style.background = t.progress;
@@ -381,9 +382,19 @@
     }
   }
 
+  /** Instantly reset the ring to empty (no backwards animation). */
+  function resetRing() {
+    els.timerRing.style.transition = "none";
+    els.timerRing.setAttribute("stroke-dashoffset", RING_CIRCUMFERENCE);
+    els.timerRing.offsetHeight;  // force reflow
+    els.timerRing.style.transition = "";
+  }
+
   function render() {
     const p = phases[phaseIndex];
-    const progress = (p.duration - timeLeft) / p.duration;
+    // Target one tick ahead so the CSS transition visually reaches 100%
+    // before the phase ends (otherwise the ring maxes out at (d-1)/d).
+    const progress = Math.min(1, (p.duration - timeLeft + 1) / p.duration);
     const offset   = RING_CIRCUMFERENCE * (1 - progress);
 
     applyTheme(p.type);
@@ -399,16 +410,16 @@
 
   function showButtons(st) {
     els.btnStart.style.display  = (st === "idle" || st === "done") ? "inline-block" : "none";
-    els.btnStart.textContent    = st === "done" ? "AGAIN" : "START";
     els.btnPause.style.display  = st === "running" ? "inline-block" : "none";
     els.btnResume.style.display = st === "paused" ? "inline-block" : "none";
     els.btnReset.style.display  = (st === "paused" || st === "running" || st === "countdown") ? "inline-block" : "none";
     els.btnSkip.style.display   = (st === "running" || st === "paused" || st === "countdown") ? "inline-block" : "none";
     els.btnHome.style.display   = (st === "idle" || st === "done") ? "inline-block" : "none";
-    // On done screen, DONE is primary action, AGAIN is secondary
-    els.btnStart.className = st === "done" ? "btn btn-secondary" : "btn btn-primary";
-    els.btnHome.className  = st === "done" ? "btn btn-primary btn-home" : "btn btn-secondary btn-home";
-    els.btnHome.textContent = st === "done" ? "DONE" : "\u2190 HOME";
+    // On done screen: bottom button = DONE (primary), top button = AGAIN (secondary)
+    els.btnStart.textContent = st === "done" ? "DONE" : "START";
+    els.btnStart.className   = "btn btn-primary";
+    els.btnHome.textContent  = st === "done" ? "AGAIN" : "\u2190 HOME";
+    els.btnHome.className    = "btn btn-secondary btn-home";
   }
 
   // ── Done screen ─────────────────────────────────────────────
@@ -477,6 +488,7 @@
         const upcoming = phases[phaseIndex + 1];
         speakHint("Next: " + upcoming.name + (upcoming.hint ? ". " + upcoming.hint : ""));
       }
+      resetRing();
       applyTheme(nx.type);
       render();
       return;
@@ -526,6 +538,7 @@
       var announcement = "First up: " + firstExercise.name + ". " + firstExercise.hint;
       secs = Math.max(secs, hintSpeechSecs(announcement));
     }
+    countdownTotal = secs;
     countdownLeft = secs;
     state = "countdown";
     speak("Get ready");
@@ -552,8 +565,7 @@
   }
 
   function renderCountdown() {
-    const cdTotal = typeof COUNTDOWN_SECS === "number" ? COUNTDOWN_SECS : 10;
-    const progress = 1 - (countdownLeft / cdTotal);
+    const progress = 1 - (countdownLeft / countdownTotal);
     const offset = RING_CIRCUMFERENCE * (1 - progress);
     els.timerRing.setAttribute("stroke-dashoffset", offset);
     els.timerDisplay.textContent = countdownLeft;
@@ -574,6 +586,7 @@
 
   function beginWorkout() {
     state = "running";
+    resetRing();
     applyTheme(phases[phaseIndex].type);
     render();
     showButtons("running");
@@ -1664,12 +1677,18 @@
     }
 
     // ── Wire buttons ─────────────────────────────────────────
-    els.btnStart.addEventListener("click", start);
+    els.btnStart.addEventListener("click", function () {
+      if (state === "done") goHome();  // "DONE" on complete screen
+      else start();
+    });
     els.btnPause.addEventListener("click", pause);
     els.btnResume.addEventListener("click", resume);
     els.btnReset.addEventListener("click", reset);
     els.btnSkip.addEventListener("click", skip);
-    els.btnHome.addEventListener("click", goHome);
+    els.btnHome.addEventListener("click", function () {
+      if (state === "done") start();   // "AGAIN" on complete screen
+      else goHome();
+    });
     els.btnHistory.addEventListener("click", showHistory);
     els.btnHistoryBack.addEventListener("click", hideHistory);
     els.btnClearHistory.addEventListener("click", function () {
