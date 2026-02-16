@@ -143,8 +143,7 @@
   }
 
   function summarise(phasesArr, mult, restMult) {
-    // Use buildPhases to get the real phase list (including any injected rests)
-    var built = buildPhases(phasesArr, mult || 1, restMult || (mult || 1));
+    var built = buildPhases(phasesArr, mult || 1, restMult || (mult || 1), settings.announceHints);
     let workCount = 0, stretchCount = 0, yogaCount = 0, total = 0;
     for (var i = 0; i < built.length; i++) {
       var p = built[i];
@@ -162,19 +161,20 @@
   }
 
   /**
-   * Build the final phase array with durations adjusted for multipliers
-   * and (when announceHints is on) for minimum rest to fit the next hint.
+   * Build the final phase array with durations adjusted for multipliers.
+   * When withHints is true, ensures every hinted non-rest phase is
+   * preceded by a rest long enough for the full TTS announcement.
    */
-  function buildPhases(raw, m, rm) {
+  function buildPhases(raw, m, rm, withHints) {
     var result = [];
     for (var i = 0; i < raw.length; i++) {
       var p = raw[i];
       var mult = p.type === "rest" ? rm : m;
       var dur = Math.round(p.duration * mult);
 
-      // When announceHints is on, ensure every hinted non-rest phase is
+      // When hints are on, ensure every hinted non-rest phase is
       // preceded by a rest long enough for the full TTS announcement.
-      if (settings.announceHints && p.type !== "rest" && p.hint) {
+      if (withHints && p.type !== "rest" && p.hint) {
         var needed = hintSpeechSecs("Next: " + p.name + ". " + p.hint);
         var prev = result[result.length - 1];
         if (prev && prev.type === "rest") {
@@ -220,10 +220,14 @@
   }
 
   // ── TTS (text-to-speech) ────────────────────────────────────
+  var TTS_RATE      = 1.1;  // rate for short cues (phase names, "Next: …")
+  var TTS_HINT_RATE = 1.0;  // rate for longer hint announcements
+  var TTS_BASE_WPS  = 2.5;  // ~words-per-second at rate 1.0
+
   function speak(text) {
     if (!settings.tts || !window.speechSynthesis) return;
     var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.1;
+    u.rate = TTS_RATE;
     u.volume = 0.8;
     speechSynthesis.speak(u);
   }
@@ -232,16 +236,16 @@
   function speakHint(text) {
     if (!settings.announceHints || !window.speechSynthesis) return;
     var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.0;
+    u.rate = TTS_HINT_RATE;
     u.volume = 0.8;
     speechSynthesis.speak(u);
   }
 
-  /** Estimate how many seconds TTS needs for a given text (~2.5 words/sec at rate 1.0, +1s buffer). */
+  /** Estimate how many seconds TTS needs for a given text at hint rate (+1s buffer). */
   function hintSpeechSecs(text) {
     if (!text) return 0;
     var words = text.trim().split(/\s+/).length;
-    return Math.ceil(words / 2.5) + 1;
+    return Math.ceil(words / (TTS_BASE_WPS * TTS_HINT_RATE)) + 1;
   }
 
   function cancelSpeech() {
@@ -866,7 +870,11 @@
     els.timerScreen.appendChild(banner);
   }
 
-  /** Filter out hidden exercises for a given workout. */
+  /**
+   * Filter out hidden exercises for a given workout.
+   * Must be called BEFORE buildPhases — this removes orphaned rests left
+   * by hidden exercises, then buildPhases may re-inject rests for hints.
+   */
   function filterHidden(workoutId, phasesArr) {
     return phasesArr.filter(function (p) {
       if (p.type === "rest") return true;
@@ -1035,13 +1043,18 @@
     hideBuilder();
   }
 
+  /** filterHidden → buildPhases in the correct order. */
+  function preparePhases(workoutId, rawPhases, m, rm) {
+    return buildPhases(filterHidden(workoutId, rawPhases), m, rm, settings.announceHints);
+  }
+
   /** Rebuild phases from the original workout using sessionMultiplier. */
   function applySessionMultiplier() {
     if (!currentWorkoutId) return;
     var w = allWorkouts()[currentWorkoutId];
     var m = sessionMultiplier;
     var rm = sessionRestMultiplier;
-    phases = buildPhases(filterHidden(currentWorkoutId, w.phases), m, rm);
+    phases = preparePhases(currentWorkoutId, w.phases, m, rm);
     totalTime = phases.reduce(function (sum, p) { return sum + p.duration; }, 0);
     timeLeft = phases[0].duration;
 
@@ -1058,8 +1071,7 @@
     const w = allWorkouts()[id];
     var m = sessionMultiplier;
     var rm = sessionRestMultiplier;
-    var filtered = filterHidden(id, w.phases);
-    phases = buildPhases(filtered, m, rm);
+    phases = preparePhases(id, w.phases, m, rm);
     totalTime = phases.reduce((sum, p) => sum + p.duration, 0);
 
     els.pickerScreen.classList.remove("active");

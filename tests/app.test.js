@@ -119,30 +119,26 @@ describe("buildPhases()", () => {
     { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
   ];
 
-  beforeEach(() => {
-    settings.announceHints = false;
-  });
-
   it("applies work multiplier to work phases", () => {
-    const result = buildPhases(rawPhases, 2, 1);
+    const result = buildPhases(rawPhases, 2, 1, false);
     assert.equal(result[0].duration, 80); // 40 * 2
     assert.equal(result[2].duration, 80); // 40 * 2
   });
 
   it("applies rest multiplier to rest phases", () => {
-    const result = buildPhases(rawPhases, 1, 2);
+    const result = buildPhases(rawPhases, 1, 2, false);
     assert.equal(result[1].duration, 40); // 20 * 2
   });
 
   it("applies different multipliers to work and rest", () => {
-    const result = buildPhases(rawPhases, 1.5, 0.5);
+    const result = buildPhases(rawPhases, 1.5, 0.5, false);
     assert.equal(result[0].duration, 60);  // 40 * 1.5
     assert.equal(result[1].duration, 10);  // 20 * 0.5
     assert.equal(result[2].duration, 60);  // 40 * 1.5
   });
 
   it("preserves name, type, and hint", () => {
-    const result = buildPhases(rawPhases, 1, 1);
+    const result = buildPhases(rawPhases, 1, 1, false);
     assert.equal(result[0].name, "Squats");
     assert.equal(result[0].type, "work");
     assert.equal(result[0].hint, "Go deep");
@@ -151,51 +147,46 @@ describe("buildPhases()", () => {
 
   it("rounds durations to integers", () => {
     const phases = [{ name: "X", type: "work", duration: 10, hint: "" }];
-    const result = buildPhases(phases, 0.75, 1);
+    const result = buildPhases(phases, 0.75, 1, false);
     // 10 * 0.75 = 7.5 → Math.round → 8
     assert.equal(result[0].duration, 8);
     assert.ok(Number.isInteger(result[0].duration));
   });
 
   it("returns empty array for empty input", () => {
-    assert.deepEqual(buildPhases([], 1, 1), []);
+    assert.deepEqual(buildPhases([], 1, 1, false), []);
   });
 
-  it("extends rest when announceHints is on and next phase has a long hint", () => {
-    settings.announceHints = true;
+  it("extends rest when withHints is true and next phase has a long hint", () => {
     const phases = [
       { name: "Rest", type: "rest", duration: 5, hint: "" },
       { name: "Move", type: "work", duration: 30, hint: "one two three four five six seven eight nine ten eleven twelve" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, true);
     const needed = hintSpeechSecs("Next: Move. one two three four five six seven eight nine ten eleven twelve");
     assert.ok(result[0].duration >= needed);
-    settings.announceHints = false;
   });
 
   it("injects rest before hinted phase when no preceding rest", () => {
-    settings.announceHints = true;
     const phases = [
       { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
       { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, true);
     assert.equal(result.length, 4);
     assert.equal(result[0].type, "rest");
     assert.equal(result[1].name, "Squats");
     assert.equal(result[2].type, "rest");
     assert.equal(result[3].name, "Lunges");
-    settings.announceHints = false;
   });
 
   it("does not inject rest when one already precedes the hinted phase", () => {
-    settings.announceHints = true;
     const phases = [
       { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
       { name: "Rest",   type: "rest", duration: 20, hint: "" },
       { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, true);
     // Should inject before Squats, extend existing Rest before Lunges
     const restCount = result.filter(p => p.type === "rest").length;
     assert.equal(restCount, 2);
@@ -203,57 +194,49 @@ describe("buildPhases()", () => {
     assert.equal(result[1].name, "Squats");
     assert.equal(result[2].type, "rest");   // existing, extended
     assert.equal(result[3].name, "Lunges");
-    settings.announceHints = false;
   });
 
   it("injected rest duration accounts for full TTS announcement", () => {
-    settings.announceHints = true;
     const phases = [
       { name: "Push-ups", type: "work", duration: 40, hint: "Hands wider than shoulders body straight" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, true);
     const needed = hintSpeechSecs("Next: Push-ups. Hands wider than shoulders body straight");
     assert.equal(result[0].type, "rest");
     assert.equal(result[0].duration, needed);
-    settings.announceHints = false;
   });
 
-  it("does not inject rests when announceHints is off", () => {
-    settings.announceHints = false;
+  it("does not inject rests when withHints is false", () => {
     const phases = [
       { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
       { name: "Lunges", type: "work", duration: 40, hint: "Step forward" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, false);
     assert.equal(result.length, 2);
     assert.equal(result[0].name, "Squats");
     assert.equal(result[1].name, "Lunges");
   });
 
   it("does not inject rest before phases without hints", () => {
-    settings.announceHints = true;
     const phases = [
       { name: "Squats", type: "work", duration: 40, hint: "" },
       { name: "Lunges", type: "work", duration: 40, hint: "" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, true);
     assert.equal(result.length, 2);
-    settings.announceHints = false;
   });
 
   it("injects rest before hinted stretch and yoga phases", () => {
-    settings.announceHints = true;
     const phases = [
       { name: "Quad Stretch",  type: "stretch", duration: 25, hint: "Pull heel to glute" },
       { name: "Mountain Pose", type: "yoga",    duration: 20, hint: "Stand tall" },
     ];
-    const result = buildPhases(phases, 1, 1);
+    const result = buildPhases(phases, 1, 1, true);
     assert.equal(result.length, 4);
     assert.equal(result[0].type, "rest");
     assert.equal(result[1].type, "stretch");
     assert.equal(result[2].type, "rest");
     assert.equal(result[3].type, "yoga");
-    settings.announceHints = false;
   });
 });
 
