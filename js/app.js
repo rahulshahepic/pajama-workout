@@ -376,6 +376,7 @@
     const progress = (p.duration - timeLeft) / p.duration;
     const offset   = RING_CIRCUMFERENCE * (1 - progress);
 
+    applyTheme(p.type);
     els.timerRing.setAttribute("stroke-dashoffset", offset);
     els.timerDisplay.textContent = fmt(timeLeft);
     els.progressFill.style.width = (elapsed / totalTime * 100) + "%";
@@ -394,6 +395,10 @@
     els.btnReset.style.display  = (st === "paused" || st === "running" || st === "countdown") ? "inline-block" : "none";
     els.btnSkip.style.display   = (st === "running" || st === "paused" || st === "countdown") ? "inline-block" : "none";
     els.btnHome.style.display   = (st === "idle" || st === "done") ? "inline-block" : "none";
+    // On done screen, DONE is primary action, AGAIN is secondary
+    els.btnStart.className = st === "done" ? "btn btn-secondary" : "btn btn-primary";
+    els.btnHome.className  = st === "done" ? "btn btn-primary btn-home" : "btn btn-secondary btn-home";
+    els.btnHome.textContent = st === "done" ? "DONE" : "\u2190 HOME";
   }
 
   // ── Done screen ─────────────────────────────────────────────
@@ -457,9 +462,10 @@
       else cue("start");
 
       speak(nx.name);
-      // If entering a rest phase with announceHints, read the upcoming hint
+      // If entering a rest phase with announceHints, read the upcoming phase name + hint
       if (settings.announceHints && nx.type === "rest" && phaseIndex + 1 < phases.length) {
-        speakHint(phases[phaseIndex + 1].hint);
+        const upcoming = phases[phaseIndex + 1];
+        speakHint("Next: " + upcoming.name + (upcoming.hint ? ". " + upcoming.hint : ""));
       }
       applyTheme(nx.type);
       render();
@@ -469,9 +475,13 @@
     elapsed++;
     if (timeLeft === 3) {
       cue("tick");
-      // Announce what's next at 3 seconds remaining
+      // Announce what's next at 3 seconds remaining (name + hint for all phase types)
       var nextPhase = phases[phaseIndex + 1];
-      if (nextPhase) speak("Next: " + nextPhase.name);
+      if (nextPhase) {
+        var announcement = "Next: " + nextPhase.name;
+        if (settings.announceHints && nextPhase.hint) announcement += ". " + nextPhase.hint;
+        speak(announcement);
+      }
     } else if (timeLeft < 3 && timeLeft > 0) {
       cue("tick");
     }
