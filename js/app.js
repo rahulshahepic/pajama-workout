@@ -175,7 +175,8 @@
 
       // When hints are on, ensure every hinted non-rest phase is
       // preceded by a rest long enough for the full TTS announcement.
-      if (withHints && p.type !== "rest" && p.hint) {
+      // Skip the very first exercise — the countdown handles that one.
+      if (withHints && p.type !== "rest" && p.hint && result.length > 0) {
         var needed = hintSpeechSecs("Next: " + p.name + ". " + p.hint);
         var prev = result[result.length - 1];
         if (prev && prev.type === "rest") {
@@ -365,13 +366,13 @@
   }
 
   function renderUpNext() {
-    if (state !== "running" && state !== "paused") {
+    const upcoming = phases.slice(phaseIndex + 1, phaseIndex + 4);
+    if ((state !== "running" && state !== "paused") || upcoming.length === 0) {
       els.upnextContainer.style.display = "none";
       return;
     }
     els.upnextContainer.style.display = "block";
     els.upnextList.innerHTML = "";
-    const upcoming = phases.slice(phaseIndex + 1, phaseIndex + 4);
     for (const u of upcoming) {
       const div = document.createElement("div");
       div.className = "upnext-item " + (u.type === "rest" ? "upnext-rest" : "upnext-work");
@@ -532,8 +533,7 @@
 
   function startCountdown(secs) {
     // When announceHints is on, preview the first exercise during countdown.
-    // phases[0] might be an injected rest, so find the first non-rest phase.
-    var firstExercise = phases.find(function (p) { return p.type !== "rest"; });
+    var firstExercise = phases[0];
     if (settings.announceHints && firstExercise && firstExercise.hint) {
       var announcement = "First up: " + firstExercise.name + ". " + firstExercise.hint;
       secs = Math.max(secs, hintSpeechSecs(announcement));

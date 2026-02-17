@@ -167,43 +167,44 @@ describe("buildPhases()", () => {
     assert.ok(result[0].duration >= needed);
   });
 
-  it("injects rest before hinted phase when no preceding rest", () => {
+  it("skips rest injection before the first phase (countdown handles it)", () => {
     const phases = [
       { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
       { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
     ];
     const result = buildPhases(phases, 1, 1, true);
-    assert.equal(result.length, 4);
-    assert.equal(result[0].type, "rest");
-    assert.equal(result[1].name, "Squats");
-    assert.equal(result[2].type, "rest");
-    assert.equal(result[3].name, "Lunges");
+    // Rest injected only before Lunges, not before Squats
+    assert.equal(result.length, 3);
+    assert.equal(result[0].name, "Squats");
+    assert.equal(result[1].type, "rest");
+    assert.equal(result[2].name, "Lunges");
   });
 
-  it("does not inject rest when one already precedes the hinted phase", () => {
+  it("extends existing rest before a hinted phase", () => {
     const phases = [
       { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
       { name: "Rest",   type: "rest", duration: 20, hint: "" },
       { name: "Lunges", type: "work", duration: 40, hint: "Alternate legs" },
     ];
     const result = buildPhases(phases, 1, 1, true);
-    // Should inject before Squats, extend existing Rest before Lunges
+    // No injection before Squats (first phase), existing Rest extended before Lunges
     const restCount = result.filter(p => p.type === "rest").length;
-    assert.equal(restCount, 2);
-    assert.equal(result[0].type, "rest");   // injected
-    assert.equal(result[1].name, "Squats");
-    assert.equal(result[2].type, "rest");   // existing, extended
-    assert.equal(result[3].name, "Lunges");
+    assert.equal(restCount, 1);
+    assert.equal(result[0].name, "Squats");
+    assert.equal(result[1].type, "rest");   // existing, extended
+    assert.equal(result[2].name, "Lunges");
   });
 
   it("injected rest duration accounts for full TTS announcement", () => {
     const phases = [
+      { name: "Squats", type: "work", duration: 40, hint: "Go deep" },
       { name: "Push-ups", type: "work", duration: 40, hint: "Hands wider than shoulders body straight" },
     ];
     const result = buildPhases(phases, 1, 1, true);
     const needed = hintSpeechSecs("Next: Push-ups. Hands wider than shoulders body straight");
-    assert.equal(result[0].type, "rest");
-    assert.equal(result[0].duration, needed);
+    // Rest injected before Push-ups (not the first phase)
+    assert.equal(result[1].type, "rest");
+    assert.equal(result[1].duration, needed);
   });
 
   it("does not inject rests when withHints is false", () => {
@@ -226,17 +227,17 @@ describe("buildPhases()", () => {
     assert.equal(result.length, 2);
   });
 
-  it("injects rest before hinted stretch and yoga phases", () => {
+  it("injects rest before hinted stretch and yoga phases (not the first)", () => {
     const phases = [
       { name: "Quad Stretch",  type: "stretch", duration: 25, hint: "Pull heel to glute" },
       { name: "Mountain Pose", type: "yoga",    duration: 20, hint: "Stand tall" },
     ];
     const result = buildPhases(phases, 1, 1, true);
-    assert.equal(result.length, 4);
-    assert.equal(result[0].type, "rest");
-    assert.equal(result[1].type, "stretch");
-    assert.equal(result[2].type, "rest");
-    assert.equal(result[3].type, "yoga");
+    // No rest before first phase (Quad Stretch), rest injected before Mountain Pose
+    assert.equal(result.length, 3);
+    assert.equal(result[0].type, "stretch");
+    assert.equal(result[1].type, "rest");
+    assert.equal(result[2].type, "yoga");
   });
 });
 
